@@ -438,6 +438,7 @@ export function SettingsPage() {
                 id="settings-best-of-ko"
                 options={BEST_OF_OPTIONS}
                 value={bestOfLabel(values.knockoutSetsPerMatch)}
+                disabled={settings.knockoutRulesLocked}
                 onChange={(event) => {
                   set(
                     'knockoutSetsPerMatch',

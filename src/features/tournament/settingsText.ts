@@ -33,6 +33,12 @@ export function walkoverText({ setsToWin, gamePoints, pointsWalkover }: Settings
   return `El rival gana ${String(setsToWin)}-0 (${String(gamePoints)}-0 por set). El ausente suma ${points} en el grupo.`;
 }
 
+/** Same for a knockout match: the rival advances. */
+export function knockoutWalkoverText({ knockoutSetsPerMatch, gamePoints }: Settings): string {
+  const toWin = Math.ceil(knockoutSetsPerMatch / 2);
+  return `El rival gana ${String(toWin)}-0 (${String(gamePoints)}-0 por set) y pasa a la ronda siguiente.`;
+}
+
 const dateFormat = new Intl.DateTimeFormat('es', {
   day: 'numeric',
   month: 'long',

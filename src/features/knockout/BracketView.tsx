@@ -1,7 +1,13 @@
 import { ArrowDown, ArrowUp, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { PlayerBib } from '../groupStage/PlayerBadges.tsx';
-import type { BracketSlot, KnockoutDraw } from '../../api/types.ts';
+import type {
+  BracketSlot,
+  Entrant,
+  KnockoutMatchView,
+  KnockoutView,
+  Player,
+} from '../../api/types.ts';
 import { roundName } from '../groupStage/display.ts';
 
 /** What to show for a bracket position. */
@@ -14,7 +20,7 @@ export interface SlotInfo {
 }
 
 interface BracketViewProps {
-  draw: KnockoutDraw;
+  draw: KnockoutView;
   describe: (slot: BracketSlot) => SlotInfo;
 }
 
@@ -23,61 +29,111 @@ const LABEL_TONE = {
   2: 'bg-neutral-700 text-neutral-200',
 } as const;
 
-/** One bracket position: number, "1.º G1" label and Nr. on top; player's name below. */
-function Entry({ position, info }: { position: number; info: SlotInfo }) {
-  if (info.place === null) {
+const samePlayer = (a: Entrant, b: Entrant) =>
+  a.kind === 'player' && b.kind === 'player' && a.player.id === b.player.id;
+
+/** One side of a match: position and "1.º G1" label (first round), player and sets won. */
+function EntrantRow({
+  match,
+  side,
+  info,
+  position,
+}: {
+  match: KnockoutMatchView;
+  side: 0 | 1;
+  /** First round only: the draw slot this side comes from. */
+  info: SlotInfo | null;
+  position: number | null;
+}) {
+  const entrant = match.entrants[side];
+  const { summary } = match;
+  const decided = match.playable && summary.finished;
+  const won = decided && samePlayer(match.advances, entrant);
+  const lost = decided && !won;
+
+  if (entrant.kind === 'bye') {
     return (
       <div className="flex h-14 items-center gap-2 px-2.5 text-xs text-neutral-600">
-        <span className="w-5 shrink-0 text-right tabular-nums">{position}</span>
+        {position !== null && (
+          <span className="w-5 shrink-0 text-right tabular-nums">{position}</span>
+        )}
         <span className="italic">Bye (pasa directo)</span>
       </div>
     );
   }
+
+  const player: Player | null = entrant.kind === 'player' ? entrant.player : null;
+  let score: string | null = null;
+  if (match.playable && summary.started) {
+    score = summary.walkover && lost ? 'W.O.' : String(summary.sets[side]);
+  }
+
   return (
-    <div className="flex h-14 items-center gap-2 px-2.5">
-      <span className="w-5 shrink-0 text-right text-xs text-neutral-500 tabular-nums">
-        {position}
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="flex items-center gap-1.5">
-          <span
-            className={`shrink-0 rounded px-1.5 py-0.5 font-display text-[11px] leading-none font-bold ${LABEL_TONE[info.place]}`}
-          >
-            {info.label}
-          </span>
-          {info.player && <PlayerBib value={info.player.bib} />}
+    <div className={`flex h-14 items-center gap-2 px-2.5 ${won ? 'bg-secondary-500/10' : ''}`}>
+      {position !== null && (
+        <span className="w-5 shrink-0 text-right text-xs text-neutral-500 tabular-nums">
+          {position}
         </span>
-        {info.player ? (
+      )}
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        {(info?.place || player) && (
+          <span className="flex items-center gap-1.5">
+            {info?.place && (
+              <span
+                className={`shrink-0 rounded px-1.5 py-0.5 font-display text-[11px] leading-none font-bold ${LABEL_TONE[info.place]}`}
+              >
+                {info.label}
+              </span>
+            )}
+            {player && <PlayerBib value={player.bib} />}
+          </span>
+        )}
+        {player ? (
           <span
-            className="truncate text-sm leading-tight text-neutral-100"
-            title={`${info.player.name} · ${info.player.delegation}`}
+            className={`truncate text-sm leading-tight ${
+              won ? 'font-semibold text-white' : lost ? 'text-neutral-500' : 'text-neutral-100'
+            }`}
+            title={`${player.name} · ${player.delegation}`}
           >
-            {info.player.name}
+            {player.name}
           </span>
         ) : (
           <span className="truncate text-xs leading-tight text-neutral-500 italic">
-            Por definir
+            {match.round === 0 ? 'Por definir' : 'Ganador'}
           </span>
         )}
       </span>
+      {score !== null && (
+        <span
+          className={`shrink-0 font-display text-base font-bold tabular-nums ${
+            won ? 'text-secondary-300' : 'text-neutral-500'
+          }`}
+        >
+          {score}
+        </span>
+      )}
     </div>
   );
 }
 
-function MatchBox({ children }: { children: React.ReactNode }) {
+function MatchNode({ match, draw, describe }: { match: KnockoutMatchView } & BracketViewProps) {
+  const firstRound = match.round === 0;
   return (
     <div className="w-44 divide-y divide-neutral-800 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 2xl:w-52">
-      {children}
+      {([0, 1] as const).map((side) => {
+        const position = match.index * 2 + side + 1;
+        const slot = draw.slots.at(position - 1);
+        return (
+          <EntrantRow
+            key={side}
+            match={match}
+            side={side}
+            info={firstRound && slot ? describe(slot) : null}
+            position={firstRound ? position : null}
+          />
+        );
+      })}
     </div>
-  );
-}
-
-function PendingMatch() {
-  return (
-    <MatchBox>
-      <div className="flex h-14 items-center px-3 text-xs text-neutral-600">Ganador</div>
-      <div className="flex h-14 items-center px-3 text-xs text-neutral-600">Ganador</div>
-    </MatchBox>
   );
 }
 
@@ -92,84 +148,63 @@ function RoundColumn({ title, children }: { title: string; children: React.React
   );
 }
 
-/** First-round pairs of positions starting at `from`: [[from, from+1], [from+2, from+3], …] */
-function firstRoundPairs(from: number, players: number): [number, number][] {
-  return Array.from({ length: players / 2 }, (_, index) => [
-    from + index * 2,
-    from + index * 2 + 1,
-  ]);
+function Matches({ matches, ...props }: { matches: KnockoutMatchView[] } & BracketViewProps) {
+  return matches.map((match) => (
+    <MatchNode key={`${String(match.round)}-${String(match.index)}`} match={match} {...props} />
+  ));
 }
 
-function FirstRoundMatches({
-  from,
-  players,
-  slots,
-  describe,
-}: {
-  from: number;
-  players: number;
-  slots: BracketSlot[];
-  describe: BracketViewProps['describe'];
-}) {
-  return firstRoundPairs(from, players).map(([a, b]) => (
-    <MatchBox key={a}>
-      {[a, b].map((position) => (
-        <Entry key={position} position={position} info={describe(slots[position - 1])} />
-      ))}
-    </MatchBox>
-  ));
+function Champion({ player }: { player: Player | null }) {
+  return player ? (
+    <div className="text-center">
+      <p className="text-xs text-neutral-500">Campeón</p>
+      <p className="mt-0.5 flex items-center justify-center gap-1.5 font-display font-semibold text-tertiary-200">
+        <PlayerBib value={player.bib} />
+        {player.name}
+      </p>
+    </div>
+  ) : (
+    <p className="text-center text-xs text-neutral-500">Campeón</p>
+  );
 }
 
 /**
  * Whole bracket like the organizer's sheet: top half (positions 1…size/2) on the left,
  * bottom half on the right, both flowing towards the final in the middle.
  */
-function FullTree({ draw, describe }: BracketViewProps) {
-  const { size, slots } = draw;
-  const rounds = Math.log2(size);
-  const half = size / 2;
-
-  // Rounds after the first one and before the final, per side (players in that round).
-  const middleRounds = Array.from({ length: Math.max(rounds - 2, 0) }, (_, index) => ({
-    players: size / 2 ** (index + 1),
-    matchesPerSide: size / 2 ** (index + 3),
-  }));
+function FullTree(props: BracketViewProps) {
+  const { rounds, champion } = props.draw;
+  const final = rounds.at(-1)?.[0];
+  const sideRounds = rounds.slice(0, -1);
 
   return (
     <div className="overflow-x-auto pb-2">
       <div className="mx-auto flex w-max items-stretch gap-3 2xl:gap-5">
         {/* Top half → */}
-        <RoundColumn title={roundName(size)}>
-          <FirstRoundMatches from={1} players={half} slots={slots} describe={describe} />
-        </RoundColumn>
-        {middleRounds.map(({ players, matchesPerSide }) => (
-          <RoundColumn key={`left-${String(players)}`} title={roundName(players)}>
-            {Array.from({ length: matchesPerSide }, (_, index) => (
-              <PendingMatch key={index} />
-            ))}
+        {sideRounds.map((matches) => (
+          <RoundColumn key={`left-${String(matches.length)}`} title={matches[0]?.roundName ?? ''}>
+            <Matches matches={matches.slice(0, matches.length / 2)} {...props} />
           </RoundColumn>
         ))}
 
         {/* Final */}
         <RoundColumn title="Final">
           <div className="flex flex-col items-center gap-3">
-            <Trophy className="size-8 text-tertiary-400" aria-hidden="true" />
-            <PendingMatch />
-            <p className="text-center text-xs text-neutral-500">Campeón</p>
+            <Trophy
+              className={`size-8 ${champion ? 'text-tertiary-300' : 'text-tertiary-400'}`}
+              aria-hidden="true"
+            />
+            {final && <MatchNode match={final} {...props} />}
+            <Champion player={champion} />
           </div>
         </RoundColumn>
 
         {/* ← Bottom half */}
-        {middleRounds.toReversed().map(({ players, matchesPerSide }) => (
-          <RoundColumn key={`right-${String(players)}`} title={roundName(players)}>
-            {Array.from({ length: matchesPerSide }, (_, index) => (
-              <PendingMatch key={index} />
-            ))}
+        {sideRounds.toReversed().map((matches) => (
+          <RoundColumn key={`right-${String(matches.length)}`} title={matches[0]?.roundName ?? ''}>
+            <Matches matches={matches.slice(matches.length / 2)} {...props} />
           </RoundColumn>
         ))}
-        <RoundColumn title={roundName(size)}>
-          <FirstRoundMatches from={half + 1} players={half} slots={slots} describe={describe} />
-        </RoundColumn>
       </div>
     </div>
   );
@@ -205,36 +240,37 @@ function sectionsFor(size: number): Section[] {
 }
 
 /** One section drawn left → right, from its first-round matches to its own winner. */
-function SectionTree({ draw, describe, section }: BracketViewProps & { section: Section }) {
-  const { size, slots } = draw;
+function SectionTree({ section, ...props }: BracketViewProps & { section: Section }) {
+  const { size, rounds } = props.draw;
   const players = section.to - section.from + 1;
-  const rounds = Math.log2(players);
-  const nextRound = size / 2 ** rounds;
+  const sectionRounds = Math.log2(players);
+  const nextRound = size / 2 ** sectionRounds;
+  const last = rounds.at(sectionRounds - 1)?.at((section.from - 1) / players);
 
   return (
     <div className="overflow-x-auto pb-2">
       <div className="flex w-max items-stretch gap-3 2xl:gap-5">
-        <RoundColumn title={roundName(size)}>
-          <FirstRoundMatches
-            from={section.from}
-            players={players}
-            slots={slots}
-            describe={describe}
-          />
-        </RoundColumn>
-        {Array.from({ length: rounds - 1 }, (_, index) => {
-          const round = index + 1;
+        {rounds.slice(0, sectionRounds).map((matches, round) => {
+          const span = 2 ** (round + 1);
           return (
-            <RoundColumn key={round} title={roundName(size / 2 ** round)}>
-              {Array.from({ length: players / 2 ** (round + 1) }, (_, match) => (
-                <PendingMatch key={match} />
-              ))}
+            <RoundColumn key={round} title={matches[0]?.roundName ?? ''}>
+              <Matches
+                matches={matches.slice((section.from - 1) / span, section.to / span)}
+                {...props}
+              />
             </RoundColumn>
           );
         })}
         <RoundColumn title="Pasa a">
           <div className="w-44 rounded-xl border border-dashed border-neutral-700 px-3 py-4 text-center text-xs text-neutral-400 2xl:w-52">
-            El ganador de esta sección juega la{' '}
+            {last?.advances.kind === 'player' ? (
+              <>
+                <span className="font-medium text-neutral-100">{last.advances.player.name}</span>{' '}
+                juega la
+              </>
+            ) : (
+              'El ganador de esta sección juega la'
+            )}{' '}
             <span className="font-medium text-neutral-200">{roundName(nextRound)}</span>
           </div>
         </RoundColumn>
@@ -244,6 +280,14 @@ function SectionTree({ draw, describe, section }: BracketViewProps & { section: 
 }
 
 /* ---------- Compact list (like the organizer's sheet) ---------- */
+
+/** First-round pairs of positions starting at `from`: [[from, from+1], [from+2, from+3], …] */
+function firstRoundPairs(from: number, players: number): [number, number][] {
+  return Array.from({ length: players / 2 }, (_, index) => [
+    from + index * 2,
+    from + index * 2 + 1,
+  ]);
+}
 
 /** Arrow telling whether a bracket position goes "por arriba" (top half) or "por abajo". */
 export function HalfArrow({ position, size }: { position: number; size: number }) {
@@ -368,12 +412,13 @@ const toggleClass = (active: boolean) =>
   }`;
 
 /**
- * Bracket with two views: "Cuadro" (tree; big draws can be seen by quarter or half)
- * and "Lista compacta" (every position in two columns, like the organizer's sheet).
+ * Bracket with two views: "Cuadro" (every round with results; big draws can be seen by
+ * quarter or half) and "Lista compacta" (the first-round positions, like the organizer's sheet).
  */
 export function BracketView({ draw, describe }: BracketViewProps) {
   const sections = sectionsFor(draw.size);
-  const [view, setView] = useState<ViewMode>('list');
+  // Once matches are played the tree is what matters; before that, the draw list.
+  const [view, setView] = useState<ViewMode>(draw.hasResults ? 'tree' : 'list');
   const [sectionId, setSectionId] = useState(sections[0]?.id ?? 'all');
   const section = sections.find((candidate) => candidate.id === sectionId);
 

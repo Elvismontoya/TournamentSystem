@@ -1,7 +1,7 @@
-import { Info, Network, Pencil, Shuffle, TriangleAlert } from 'lucide-react';
+import { Info, Lock, Network, Pencil, Shuffle, Trophy, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import type { BracketSlot, Player } from '../../api/types.ts';
+import type { BracketSlot, KnockoutView, Player, Settings } from '../../api/types.ts';
 import { Button } from '../../components/ui/Button.tsx';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
 import { Card } from '../../components/ui/Card.tsx';
@@ -15,6 +15,107 @@ import {
   ManualBracketEditor,
   type BibResolution,
 } from '../../features/knockout/ManualBracketEditor.tsx';
+import { ScoreCard } from '../../features/matches/ScoreCard.tsx';
+import {
+  bestOfLabel,
+  knockoutWalkoverText,
+  setRuleText,
+} from '../../features/tournament/settingsText.ts';
+
+const LOCKED_MATCH =
+  'El ganador ya tiene resultados en el partido siguiente: bórralos primero para cambiar este.';
+
+/** Knockout matches to play, round by round, with the same scoresheet as the group stage. */
+function KnockoutMatches({
+  knockout,
+  settings,
+  onSet,
+  onWalkover,
+}: {
+  knockout: KnockoutView;
+  settings: Settings;
+  onSet: Tournament['updateKnockoutSet'];
+  onWalkover: Tournament['setKnockoutWalkover'];
+}) {
+  const rounds = knockout.rounds
+    .map((matches) => ({
+      name: matches[0]?.roundName ?? '',
+      playable: matches.filter((match) => match.playable),
+      waiting: matches.filter(
+        (match) => match.entrants.every((entrant) => entrant.kind !== 'bye') && !match.playable,
+      ).length,
+    }))
+    .filter((round) => round.playable.length > 0 || round.waiting > 0);
+
+  return (
+    <section aria-labelledby="knockout-matches" className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 id="knockout-matches" className="text-lg font-semibold">
+            Partidos de llaves
+          </h3>
+          <p className="text-sm text-neutral-400">
+            Carga cada partido: el ganador pasa solo a la ronda siguiente. {setRuleText(settings)} ·{' '}
+            {bestOfLabel(settings.knockoutSetsPerMatch).toLowerCase()}.
+          </p>
+        </div>
+        <span className="text-sm text-neutral-400 tabular-nums">
+          {knockout.played} de {knockout.playable} jugados
+        </span>
+      </div>
+
+      {rounds.length === 0 && (
+        <p className="rounded-2xl border border-dashed border-neutral-700 px-5 py-8 text-center text-sm text-neutral-400">
+          Los partidos aparecen aquí cuando sus dos jugadores están definidos (al terminar los
+          grupos).
+        </p>
+      )}
+
+      {rounds.map((round) => (
+        <div key={round.name} className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="font-display font-semibold text-neutral-200">{round.name}</h4>
+            {round.waiting > 0 && (
+              <span className="text-xs text-neutral-500">
+                {round.waiting} {round.waiting === 1 ? 'partido espera' : 'partidos esperan'} a sus
+                jugadores
+              </span>
+            )}
+          </div>
+          {round.playable.length > 0 && (
+            <ol className="grid gap-4 xl:grid-cols-2">
+              {round.playable.map((match) => {
+                const [a, b] = match.entrants;
+                if (a.kind !== 'player' || b.kind !== 'player') return null;
+                return (
+                  <ScoreCard
+                    key={`${String(match.round)}-${String(match.index)}`}
+                    header={
+                      <span className="rounded-md bg-primary-500/15 px-2 py-0.5 font-display text-sm font-bold text-primary-300">
+                        {match.roundName} · {match.index + 1}
+                      </span>
+                    }
+                    caption={`${match.roundName}, partido ${String(match.index + 1)}`}
+                    sides={[{ player: a.player }, { player: b.player }]}
+                    match={match}
+                    walkoverText={knockoutWalkoverText(settings)}
+                    lockedReason={match.locked ? LOCKED_MATCH : undefined}
+                    onSet={(setIndex, side, value) => {
+                      onSet(match.round, match.index, setIndex, side, value);
+                    }}
+                    onWalkover={(absent) => {
+                      onWalkover(match.round, match.index, absent);
+                    }}
+                  />
+                );
+              })}
+            </ol>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
 
 const RULES = [
   'Los primeros de grupo son cabezas de serie: 1.º G1 arriba del todo, 1.º G2 abajo del todo, 1.º G3 y G4 al centro, y así sucesivamente.',
@@ -82,7 +183,8 @@ function QualifierList({
 }
 
 export function BracketsPage() {
-  const { view, drawKnockout, moveKnockoutSlot } = useOutletContext<Tournament>();
+  const { view, drawKnockout, moveKnockoutSlot, updateKnockoutSet, setKnockoutWalkover } =
+    useOutletContext<Tournament>();
   const { players, knockout, settings } = view;
   const groups = view.groupStage?.groups;
   const [editing, setEditing] = useState(false);
@@ -167,7 +269,13 @@ export function BracketsPage() {
         title="Llaves"
         text={`Cuadro de ${String(size)} · ${roundName(size).toLowerCase()} · ${String(decided)} de ${String(total)} clasificados definidos.`}
       >
-        {knockout && !editing && (
+        {knockout?.hasResults && (
+          <span className="flex items-center gap-1.5 text-sm text-neutral-400">
+            <Lock className="size-4" aria-hidden="true" />
+            Cuadro cerrado: ya hay resultados
+          </span>
+        )}
+        {knockout && !knockout.hasResults && !editing && (
           <>
             <Button variant="outlined" onClick={buildManually}>
               <Pencil className="size-4" aria-hidden="true" />
@@ -208,6 +316,19 @@ export function BracketsPage() {
         </Card>
       ) : knockout ? (
         <>
+          {knockout.champion && (
+            <Card className="flex items-center gap-4 border-tertiary-500/40 bg-tertiary-500/5">
+              <Trophy className="size-8 shrink-0 text-tertiary-300" aria-hidden="true" />
+              <div>
+                <p className="text-sm text-neutral-400">Campeón</p>
+                <p className="flex items-center gap-2 font-display text-xl font-semibold text-white">
+                  <PlayerBib value={knockout.champion.bib} />
+                  {knockout.champion.name}
+                </p>
+                <p className="text-sm text-neutral-500">{knockout.champion.delegation}</p>
+              </div>
+            </Card>
+          )}
           <Card className="p-5">
             <BracketView draw={knockout} describe={describe} />
           </Card>
@@ -221,6 +342,12 @@ export function BracketsPage() {
               ))}
             </ul>
           )}
+          <KnockoutMatches
+            knockout={knockout}
+            settings={settings}
+            onSet={updateKnockoutSet}
+            onWalkover={setKnockoutWalkover}
+          />
         </>
       ) : (
         <Card className="flex flex-col gap-4">
