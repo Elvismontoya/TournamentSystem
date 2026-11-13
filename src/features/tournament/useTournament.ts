@@ -8,6 +8,7 @@ import type {
   MatchResult,
   NewPlayer,
   Player,
+  PlayerUpdate,
   SettingsUpdate,
   TournamentView,
 } from '../../api/types.ts';
@@ -24,6 +25,10 @@ export interface Tournament {
   deleteTournament: () => Promise<void>;
   /** Throws ApiError (e.g. Nr. already taken) so the form can show it. */
   addPlayer: (entry: NewPlayer) => Promise<Player>;
+  /** Throws ApiError (e.g. Nr. already taken) so the form can show it. */
+  updatePlayer: (playerId: string, entry: PlayerUpdate) => Promise<void>;
+  /** Throws ApiError (e.g. the player is in a group). */
+  removePlayer: (playerId: string) => Promise<void>;
   previewImport: (text: string) => Promise<ImportPreview>;
   /** Throws ApiError (with one detail per invalid line). */
   importPlayers: (text: string) => Promise<void>;
@@ -244,6 +249,9 @@ export function useTournament(tournamentId: string): TournamentState {
         if (!result.added) throw new ApiError(500, 'El servidor no devolvió el jugador inscrito.');
         return result.added;
       },
+      updatePlayer: (playerId, entry) =>
+        mutate(() => tournamentsApi.updatePlayer(id, playerId, entry)),
+      removePlayer: (playerId) => mutate(() => tournamentsApi.removePlayer(id, playerId)),
       previewImport: (text) => tournamentsApi.previewImport(id, text),
       importPlayers: (text) =>
         mutate(async () => (await tournamentsApi.importPlayers(id, text)).view),

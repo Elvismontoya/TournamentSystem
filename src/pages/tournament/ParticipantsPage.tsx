@@ -3,10 +3,14 @@ import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '../../components/ui/Button.tsx';
 import { SectionHeader } from '../../components/ui/SectionHeader.tsx';
+import type { Player } from '../../api/types.ts';
+import { matchesPlayer } from '../../features/groupStage/display.ts';
 import { PlayerBib } from '../../features/groupStage/PlayerBadges.tsx';
 import type { Tournament } from '../../features/tournament/useTournament.ts';
 import { AddParticipantModal } from './AddParticipantModal.tsx';
+import { EditParticipantModal } from './EditParticipantModal.tsx';
 import { ImportParticipantsModal } from './ImportParticipantsModal.tsx';
+import { RemoveParticipantModal } from './RemoveParticipantModal.tsx';
 
 // Registered players, from the API (ordered by ranking).
 // Being registered means the player plays: there is no confirmation status.
@@ -29,18 +33,26 @@ function initials(name: string): string {
 const iconButtonClass =
   'grid size-8 place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white';
 
-type OpenModal = 'add' | 'import' | null;
+type OpenModal =
+  'add' | 'import' | { kind: 'edit'; player: Player } | { kind: 'remove'; player: Player } | null;
 
 export function ParticipantsPage() {
-  const { view, addPlayer, previewImport, importPlayers } = useOutletContext<Tournament>();
+  const { view, addPlayer, updatePlayer, removePlayer, previewImport, importPlayers } =
+    useOutletContext<Tournament>();
   const { players, seedIds, settings, groupStage, nextBib } = view;
   const CAPACITY = settings.capacity;
   // The top players by ranking head one group each (decided by the server).
   const SEEDS = seedIds.length;
   const [openModal, setOpenModal] = useState<OpenModal>(null);
+  const [query, setQuery] = useState('');
   const closeModal = () => {
     setOpenModal(null);
   };
+  const visiblePlayers = players.filter((player) => matchesPlayer(player, query));
+  /** Name of the group a player is in, or null (not drawn yet, or "sin grupo"). */
+  const groupNameOf = (player: Player) =>
+    groupStage?.groups.find((group) => group.players.some((member) => member.id === player.id))
+      ?.name ?? null;
 
   const registered = players.length;
   const remaining = CAPACITY - registered;
@@ -144,6 +156,10 @@ export function ParticipantsPage() {
           <input
             type="search"
             placeholder="Buscar por nombre o delegación"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
             className="h-10 w-full rounded-lg border border-neutral-800 bg-neutral-900 pr-3 pl-9 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-primary-500 focus:outline-none"
           />
         </label>
@@ -179,7 +195,16 @@ export function ParticipantsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800">
-            {players.map((player, index) => {
+            {visiblePlayers.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-8 text-center text-sm text-neutral-400">
+                  {players.length === 0
+                    ? 'Todavía no hay jugadores inscritos.'
+                    : `Ningún jugador coincide con «${query}».`}
+                </td>
+              </tr>
+            )}
+            {visiblePlayers.map((player, index) => {
               const seed = seedIds.indexOf(player.id) + 1;
               const isSeed = seed > 0;
               return (
@@ -225,6 +250,10 @@ export function ParticipantsPage() {
                       <button
                         type="button"
                         aria-label={`Editar a ${player.name}`}
+                        title="Editar"
+                        onClick={() => {
+                          setOpenModal({ kind: 'edit', player });
+                        }}
                         className={iconButtonClass}
                       >
                         <Pencil className="size-4" aria-hidden="true" />
@@ -232,6 +261,10 @@ export function ParticipantsPage() {
                       <button
                         type="button"
                         aria-label={`Eliminar a ${player.name}`}
+                        title="Eliminar"
+                        onClick={() => {
+                          setOpenModal({ kind: 'remove', player });
+                        }}
                         className={`${iconButtonClass} hover:bg-red-500/10 hover:text-red-300`}
                       >
                         <Trash2 className="size-4" aria-hidden="true" />
@@ -260,6 +293,22 @@ export function ParticipantsPage() {
           nextBib={nextBib}
           remaining={remaining}
           onAdd={addPlayer}
+        />
+      )}
+      {typeof openModal === 'object' && openModal?.kind === 'edit' && (
+        <EditParticipantModal
+          player={openModal.player}
+          players={players}
+          onClose={closeModal}
+          onSave={updatePlayer}
+        />
+      )}
+      {typeof openModal === 'object' && openModal?.kind === 'remove' && (
+        <RemoveParticipantModal
+          player={openModal.player}
+          groupName={groupNameOf(openModal.player)}
+          onClose={closeModal}
+          onRemove={removePlayer}
         />
       )}
       {openModal === 'import' && (

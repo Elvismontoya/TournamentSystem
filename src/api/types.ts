@@ -19,6 +19,14 @@ export interface NewPlayer {
   bib?: number;
 }
 
+/** Body of PUT /participantes/:playerId: everything editable (the Nr. is required). */
+export interface PlayerUpdate {
+  name: string;
+  delegation: string;
+  ranking: number | null;
+  bib: number;
+}
+
 /** Points of one set: [first player, second player]; null = not entered yet. */
 export type SetScore = [number | null, number | null];
 
