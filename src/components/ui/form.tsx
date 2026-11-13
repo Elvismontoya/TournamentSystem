@@ -49,7 +49,12 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export function Select({ options, className = '', ...props }: SelectProps) {
   return (
-    <select defaultValue="" className={`${controlClass} ${className}`} {...props}>
+    <select
+      // Uncontrolled selects start on the placeholder; controlled ones (value) must not get both.
+      {...(props.value === undefined ? { defaultValue: '' } : {})}
+      className={`${controlClass} ${className}`}
+      {...props}
+    >
       <option value="" disabled>
         Selecciona…
       </option>
