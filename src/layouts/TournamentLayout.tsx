@@ -23,10 +23,11 @@ import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
+import { dateRangeText, venueText } from '../features/tournament/settingsText.ts';
 import { useTournament } from '../features/tournament/useTournament.ts';
 
-// The dashboard works for any sport. Players, groups, results and brackets come from the API
-// (TournamentSystem-backend); the details in the header are still mockup text.
+// The dashboard works for any sport. Everything comes from the API (TournamentSystem-backend);
+// the header details are the ones saved in Configuración.
 
 const SECTIONS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '.', label: 'Resumen', icon: LayoutDashboard },
@@ -74,7 +75,14 @@ export function TournamentLayout() {
   }
 
   const { tournament } = state;
-  const { name } = tournament.view;
+  const { name, settings } = tournament.view;
+  const details: [LucideIcon, string | null][] = [
+    [Table2, settings.sport],
+    [User, settings.category],
+    [ListOrdered, settings.format],
+    [CalendarDays, dateRangeText(settings)],
+    [MapPin, venueText(settings)],
+  ];
 
   return (
     <div className="page-container py-8">
@@ -95,11 +103,14 @@ export function TournamentLayout() {
             <Badge>Borrador</Badge>
           </div>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-400">
-            <Meta icon={Table2}>Tenis de mesa</Meta>
-            <Meta icon={User}>Individual masculino</Meta>
-            <Meta icon={ListOrdered}>Grupos + eliminación</Meta>
-            <Meta icon={CalendarDays}>15 de noviembre de 2026</Meta>
-            <Meta icon={MapPin}>Coliseo Central · 8 mesas</Meta>
+            {details.map(
+              ([icon, text]) =>
+                text && (
+                  <Meta key={text} icon={icon}>
+                    {text}
+                  </Meta>
+                ),
+            )}
           </div>
         </div>
 

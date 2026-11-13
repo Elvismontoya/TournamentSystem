@@ -8,11 +8,22 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import type { Settings } from '../../api/types.ts';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
 import { Card } from '../../components/ui/Card.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import {
+  bestOfLabel,
+  dateRangeText,
+  matchRuleText,
+  scoringText,
+  venueText,
+} from '../../features/tournament/settingsText.ts';
+import type { Tournament } from '../../features/tournament/useTournament.ts';
 
-// Mockup: fixed example content for a freshly created tournament.
+// Mockup: the checklist, stats and upcoming matches are fixed example content. "Detalles del
+// torneo" shows the real settings (Configuración).
 
 interface SetupStep {
   title: string;
@@ -48,15 +59,25 @@ const STATS: { label: string; value: string; detail: string; icon: LucideIcon }[
   { label: 'Días para el inicio', value: '3', detail: '15 nov 2026', icon: CalendarDays },
 ];
 
-const DETAILS: [string, string][] = [
-  ['Deporte', 'Tenis de mesa'],
-  ['Categoría', 'Individual masculino'],
-  ['Formato', 'Grupos + eliminación'],
-  ['Grupos', '4 grupos de 4 · pasan 2 a cuartos de final'],
-  ['Partidos', 'Al mejor de 5 juegos a 11 puntos'],
-  ['Puntuación', 'Victoria 2 · Derrota 1 · W.O. 0'],
-  ['Desempate', 'Puntos → Enfrentamiento directo → Sets → Puntos de juego'],
-];
+/** Rows of "Detalles del torneo"; settings left empty are skipped. */
+function detailsOf(settings: Settings): [string, string][] {
+  const rows: [string, string | null][] = [
+    ['Deporte', settings.sport],
+    ['Categoría', settings.category],
+    ['Fechas', dateRangeText(settings)],
+    ['Lugar', venueText(settings)],
+    ['Formato', settings.format],
+    [
+      'Grupos',
+      `De ${String(settings.defaultGroupSize)} · clasifican ${String(settings.qualifiersPerGroup)} por grupo`,
+    ],
+    ['Partidos', matchRuleText(settings)],
+    ['Llaves', bestOfLabel(settings.knockoutSetsPerMatch)],
+    ['Puntuación', scoringText(settings)],
+    ['Desempate', 'Puntos → Entre empatados: puntos, sets, puntos de juego → Sorteo'],
+  ];
+  return rows.filter((row): row is [string, string] => Boolean(row[1]));
+}
 
 function StepMarker({ state, index }: { state: SetupStep['state']; index: number }) {
   if (state === 'done') {
@@ -81,6 +102,8 @@ function StepMarker({ state, index }: { state: SetupStep['state']; index: number
 }
 
 export function OverviewPage() {
+  const { view } = useOutletContext<Tournament>();
+  const details = detailsOf(view.settings);
   const completed = SETUP_STEPS.filter((step) => step.state === 'done').length;
   const progress = Math.round((completed / SETUP_STEPS.length) * 100);
 
@@ -191,7 +214,7 @@ export function OverviewPage() {
           </div>
           <Card className="p-0">
             <dl className="divide-y divide-neutral-800 text-sm">
-              {DETAILS.map(([term, description]) => (
+              {details.map(([term, description]) => (
                 <div key={term} className="grid grid-cols-[7.5rem_1fr] gap-3 px-5 py-3">
                   <dt className="text-neutral-500">{term}</dt>
                   <dd className="text-neutral-100">{description}</dd>

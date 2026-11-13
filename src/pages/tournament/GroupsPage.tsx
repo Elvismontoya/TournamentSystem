@@ -52,7 +52,7 @@ function DrawSetup({
   onCancel?: () => void;
 }) {
   const { view, previewDraw, drawGroups } = tournament;
-  const { minGroupSize, maxGroupSize, qualifiersPerGroup } = view.settings;
+  const { minGroupSize, maxGroupSize, qualifiersPerGroup, seeded } = view.settings;
   const sizeOptions = Array.from(
     { length: maxGroupSize - minGroupSize + 1 },
     (_, index) => minGroupSize + index,
@@ -141,8 +141,17 @@ function DrawSetup({
         <div>
           <h3 className="font-semibold">Cabezas de serie</h3>
           <p className="mt-1 text-sm text-neutral-400">
-            Los {current?.groupCount ?? '…'} primeros del ranking encabezan un grupo cada uno
-            (jugador 1 del grupo). El resto se reparte al azar.
+            {seeded ? (
+              <>
+                Los {current?.groupCount ?? '…'} primeros del ranking encabezan un grupo cada uno
+                (jugador 1 del grupo). El resto se reparte al azar.
+              </>
+            ) : (
+              <>
+                Desactivadas en Configuración: todos los jugadores se reparten al azar, sin mirar el
+                ranking.
+              </>
+            )}
           </p>
           <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {(current?.seeds ?? []).map((player, index) => (

@@ -4,11 +4,12 @@ import { useOutletContext } from 'react-router-dom';
 import { Badge } from '../../components/ui/Badge.tsx';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import type { GroupView, MatchView, SetScore } from '../../api/types.ts';
+import type { GroupView, MatchView, SetScore, Settings } from '../../api/types.ts';
 import { SectionHeader } from '../../components/ui/SectionHeader.tsx';
 import { groupNumberFromQuery, matchesPlayer } from '../../features/groupStage/display.ts';
 import { GroupFilterBar, type GroupFilter } from '../../features/groupStage/GroupFilterBar.tsx';
 import { GroupPosition, PlayerBib } from '../../features/groupStage/PlayerBadges.tsx';
+import { bestOfLabel, setRuleText, walkoverText } from '../../features/tournament/settingsText.ts';
 import type { Tournament } from '../../features/tournament/useTournament.ts';
 
 // Example schedule (fixed): every group plays on its own table, one match every 15 min.
@@ -34,11 +35,12 @@ interface MatchCardProps {
   group: GroupView;
   groupIndex: number;
   match: MatchView;
+  settings: Settings;
   onChange: Tournament['updateSet'];
   onWalkover: Tournament['setWalkover'];
 }
 
-function MatchCard({ group, groupIndex, match, onChange, onWalkover }: MatchCardProps) {
+function MatchCard({ group, groupIndex, match, settings, onChange, onWalkover }: MatchCardProps) {
   const [choosingWalkover, setChoosingWalkover] = useState(false);
   const { index: matchIndex, summary } = match;
   const [first, second] = match.players;
@@ -100,9 +102,7 @@ function MatchCard({ group, groupIndex, match, onChange, onWalkover }: MatchCard
       {choosingWalkover && !summary.walkover && (
         <div className="mt-3 rounded-xl border border-tertiary-500/40 bg-tertiary-500/10 p-3">
           <p className="text-sm font-medium text-tertiary-200">¿Quién no se presentó?</p>
-          <p className="mt-0.5 text-xs text-neutral-400">
-            El rival gana 3-0 (11-0 por set). El ausente suma 0 puntos en el grupo.
-          </p>
+          <p className="mt-0.5 text-xs text-neutral-400">{walkoverText(settings)}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {sides.map(({ player }, side) => (
               <button
@@ -323,6 +323,7 @@ export function MatchesPage() {
                   group={group}
                   groupIndex={groupIndex}
                   match={match}
+                  settings={view.settings}
                   onChange={updateSet}
                   onWalkover={setWalkover}
                 />
@@ -334,8 +335,9 @@ export function MatchesPage() {
 
       <p className="flex items-start gap-2 text-sm text-neutral-400">
         <Info className="mt-0.5 size-4 shrink-0 text-primary-300" aria-hidden="true" />
-        Sets a 11 puntos con 2 de diferencia (12-10, 13-11…) · al mejor de 5: gana quien llega a 3
-        sets. Un set inválido se marca en rojo.
+        {setRuleText(view.settings)} · {bestOfLabel(view.settings.setsPerMatch).toLowerCase()}: gana
+        quien llega a {view.settings.setsToWin} {view.settings.setsToWin === 1 ? 'set' : 'sets'}. Un
+        set inválido se marca en rojo.
       </p>
     </div>
   );
