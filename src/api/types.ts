@@ -65,7 +65,7 @@ export interface StandingRow {
   setsAgainst: number;
   pointsFor: number;
   pointsAgainst: number;
-  /** Group points: 2 per win, 1 per loss, 0 per W.O. */
+  /** Group points (per the tournament's settings; by default 2 per win, 1 per loss, 0 per W.O.). */
   points: number;
   /** Current position (1 = leader). */
   position: number;
@@ -132,13 +132,58 @@ export interface KnockoutDraw {
 }
 
 export interface Settings {
+  sport: string;
+  category: string;
+  /** ISO dates (YYYY-MM-DD), or null if not set. */
+  startDate: string | null;
+  endDate: string | null;
+  location: string;
+  courts: number | null;
+  participantType: string;
+  format: string;
+  capacity: number;
+  /** Lowest capacity allowed (players already registered, at least 2). */
+  minCapacity: number;
   minGroupSize: number;
   maxGroupSize: number;
   defaultGroupSize: number;
   qualifiersPerGroup: number;
+  /** The top of the ranking heads the groups in the draw. */
+  seeded: boolean;
+  /** Group matches: best of N sets. */
   setsPerMatch: number;
   setsToWin: number;
+  gamePoints: number;
+  winMargin: number;
+  knockoutSetsPerMatch: number;
+  pointsWin: number;
+  pointsLoss: number;
+  pointsWalkover: number;
+  /** Results were entered: match rules (sets, points per set, margin) can't change. */
+  rulesLocked: boolean;
+}
+
+/** Body of PUT /configuracion: the name plus every editable setting. */
+export interface SettingsUpdate {
+  name: string;
+  sport: string;
+  category: string;
+  startDate: string | null;
+  endDate: string | null;
+  location: string;
+  courts: number | null;
+  participantType: string;
+  format: string;
   capacity: number;
+  defaultGroupSize: number;
+  seeded: boolean;
+  setsPerMatch: number;
+  gamePoints: number;
+  winMargin: number;
+  knockoutSetsPerMatch: number;
+  pointsWin: number;
+  pointsLoss: number;
+  pointsWalkover: number;
 }
 
 export interface TournamentView {

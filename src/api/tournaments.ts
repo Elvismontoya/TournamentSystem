@@ -6,6 +6,7 @@ import type {
   ImportPreview,
   NewPlayer,
   Player,
+  SettingsUpdate,
   TournamentView,
 } from './types.ts';
 
@@ -13,6 +14,11 @@ const base = (id: string) => `/torneos/${encodeURIComponent(id)}`;
 
 export const tournamentsApi = {
   get: (id: string) => request<TournamentView>('GET', base(id)),
+
+  remove: (id: string) => request<null>('DELETE', base(id)),
+
+  updateSettings: (id: string, settings: SettingsUpdate) =>
+    request<TournamentView>('PUT', `${base(id)}/configuracion`, settings),
 
   addPlayer: (id: string, entry: NewPlayer) =>
     request<{ view: TournamentView; added: Player }>('POST', `${base(id)}/participantes`, entry),

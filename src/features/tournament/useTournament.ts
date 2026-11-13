@@ -7,6 +7,7 @@ import type {
   ImportPreview,
   NewPlayer,
   Player,
+  SettingsUpdate,
   TournamentView,
 } from '../../api/types.ts';
 
@@ -16,6 +17,10 @@ export interface Tournament {
   /** Message of the last action that failed (shown in a banner), or null. */
   actionError: string | null;
   dismissActionError: () => void;
+  /** Throws ApiError (e.g. rules locked by results) so the form can show it. */
+  updateSettings: (settings: SettingsUpdate) => Promise<void>;
+  /** Deletes the tournament for good. Throws ApiError. */
+  deleteTournament: () => Promise<void>;
   /** Throws ApiError (e.g. Nr. already taken) so the form can show it. */
   addPlayer: (entry: NewPlayer) => Promise<Player>;
   previewImport: (text: string) => Promise<ImportPreview>;
@@ -172,6 +177,10 @@ export function useTournament(tournamentId: string): TournamentState {
       actionError,
       dismissActionError: () => {
         setActionError(null);
+      },
+      updateSettings: (settings) => mutate(() => tournamentsApi.updateSettings(id, settings)),
+      deleteTournament: async () => {
+        await tournamentsApi.remove(id);
       },
       addPlayer: async (entry) => {
         const result: { added?: Player } = {};

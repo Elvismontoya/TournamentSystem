@@ -31,7 +31,9 @@ export async function request<T>(method: string, path: string, body?: unknown): 
     throw new ApiError(0, UNREACHABLE);
   }
 
-  const data = (await response.json().catch(() => null)) as unknown;
+  // 204 No Content (e.g. a delete) has no body.
+  const data =
+    response.status === 204 ? null : ((await response.json().catch(() => null)) as unknown);
   if (!response.ok) {
     const error =
       typeof data === 'object' && data !== null
