@@ -1,13 +1,4 @@
-import {
-  CalendarDays,
-  Check,
-  Lock,
-  Pencil,
-  Swords,
-  Table2,
-  Users,
-  type LucideIcon,
-} from 'lucide-react';
+import { CalendarDays, Check, Lock, Pencil, Swords, Users, type LucideIcon } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import type { Settings } from '../../api/types.ts';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
@@ -18,7 +9,6 @@ import {
   dateRangeText,
   matchRuleText,
   scoringText,
-  venueText,
 } from '../../features/tournament/settingsText.ts';
 import type { Tournament } from '../../features/tournament/useTournament.ts';
 
@@ -54,7 +44,6 @@ const SETUP_STEPS: SetupStep[] = [
 
 const STATS: { label: string; value: string; detail: string; icon: LucideIcon }[] = [
   { label: 'Participantes', value: '16', detail: 'de 16 cupos', icon: Users },
-  { label: 'Mesas', value: '8', detail: 'disponibles en la sede', icon: Table2 },
   { label: 'Partidos jugados', value: '0', detail: 'aún sin sorteo', icon: Swords },
   { label: 'Días para el inicio', value: '3', detail: '15 nov 2026', icon: CalendarDays },
 ];
@@ -65,7 +54,7 @@ function detailsOf(settings: Settings): [string, string][] {
     ['Deporte', settings.sport],
     ['Categoría', settings.category],
     ['Fechas', dateRangeText(settings)],
-    ['Lugar', venueText(settings)],
+    ['Lugar', settings.location],
     ['Formato', settings.format],
     [
       'Grupos',
@@ -169,7 +158,7 @@ export function OverviewPage() {
       </Card>
 
       {/* Stats */}
-      <section aria-label="Resumen" className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <section aria-label="Resumen" className="grid gap-4 sm:grid-cols-3">
         {STATS.map(({ label, value, detail, icon: Icon }) => (
           <Card key={label} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
@@ -193,7 +182,7 @@ export function OverviewPage() {
           <EmptyState
             icon={CalendarDays}
             title="Todavía no hay partidos"
-            text="Los partidos y sus mesas aparecerán aquí cuando inscribas jugadores y sortees los grupos."
+            text="Los partidos aparecerán aquí cuando inscribas jugadores y sortees los grupos."
           >
             <ButtonLink to="participantes" variant="soft">
               Añadir participantes

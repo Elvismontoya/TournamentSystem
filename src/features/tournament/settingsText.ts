@@ -56,14 +56,3 @@ export function dateRangeText({ startDate, endDate }: Settings): string | null {
   if (!endDate || endDate === startDate) return formatDate(startDate);
   return `${formatDate(startDate)} – ${formatDate(endDate)}`;
 }
-
-/** "Coliseo Central · 8 mesas"; null if neither is set. */
-export function venueText({ location, courts }: Settings): string | null {
-  const parts = [
-    location,
-    courts === null
-      ? ''
-      : `${String(courts)} ${courts === 1 ? 'cancha o mesa' : 'canchas o mesas'}`,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(' · ') : null;
-}

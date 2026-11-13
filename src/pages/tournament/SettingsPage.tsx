@@ -23,7 +23,6 @@ interface FormValues {
   startDate: string;
   endDate: string;
   location: string;
-  courts: string;
   participantType: string;
   format: string;
   capacity: string;
@@ -51,7 +50,6 @@ function valuesOf({ name, settings }: TournamentView): FormValues {
     startDate: settings.startDate ?? '',
     endDate: settings.endDate ?? '',
     location: settings.location,
-    courts: settings.courts === null ? '' : String(settings.courts),
     participantType: settings.participantType,
     format: settings.format,
     capacity: String(settings.capacity),
@@ -84,7 +82,6 @@ function updateOf(values: FormValues): SettingsUpdate {
     startDate: values.startDate || null,
     endDate: values.endDate || null,
     location: values.location,
-    courts: values.courts.trim() === '' ? null : integer(values.courts, 'Canchas o mesas'),
     participantType: values.participantType,
     format: values.format,
     capacity: integer(values.capacity, 'Cupos'),
@@ -332,9 +329,6 @@ export function SettingsPage() {
             </Field>
             <Field id="settings-location" label="Lugar">
               <Input id="settings-location" maxLength={100} {...text('location')} />
-            </Field>
-            <Field id="settings-tables" label="Canchas o mesas disponibles">
-              <Input id="settings-tables" type="number" min={1} {...text('courts')} />
             </Field>
           </div>
         </SettingsCard>

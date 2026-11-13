@@ -23,7 +23,7 @@ import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
-import { dateRangeText, venueText } from '../features/tournament/settingsText.ts';
+import { dateRangeText } from '../features/tournament/settingsText.ts';
 import { useTournament } from '../features/tournament/useTournament.ts';
 
 // The dashboard works for any sport. Everything comes from the API (TournamentSystem-backend);
@@ -81,7 +81,7 @@ export function TournamentLayout() {
     [User, settings.category],
     [ListOrdered, settings.format],
     [CalendarDays, dateRangeText(settings)],
-    [MapPin, venueText(settings)],
+    [MapPin, settings.location],
   ];
 
   return (

@@ -12,9 +12,9 @@ import { ScoreCard } from '../../features/matches/ScoreCard.tsx';
 import { bestOfLabel, setRuleText, walkoverText } from '../../features/tournament/settingsText.ts';
 import type { Tournament } from '../../features/tournament/useTournament.ts';
 
-// Example schedule (fixed): every group plays on its own table, one match every 15 min.
+// Example schedule (fixed): one match every 15 min per group.
 const MATCH_DAY = '15 nov';
-/** Example schedule: 11:00, then one match every 15 minutes on the group's table. */
+/** Example schedule: 11:00, then one match every 15 minutes. */
 function matchTime(matchIndex: number): string {
   const minutes = 11 * 60 + matchIndex * 15;
   return `${String(Math.floor(minutes / 60))}:${String(minutes % 60).padStart(2, '0')}`;
@@ -52,7 +52,7 @@ function MatchCard({
             {first + 1}-{second + 1}
           </span>
           <span className="text-xs text-neutral-400">
-            {MATCH_DAY} · {matchTime(matchIndex)} · Mesa {groupIndex + 1}
+            {MATCH_DAY} · {matchTime(matchIndex)}
           </span>
         </>
       }

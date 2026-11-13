@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  CalendarDays,
   Check,
   ChevronDown,
   CircleDot,
@@ -44,9 +43,9 @@ const FEATURES: { title: string; text: string; icon: LucideIcon; tone: string }[
     tone: 'bg-primary-500/15 text-primary-300',
   },
   {
-    title: 'Calendario por canchas o mesas',
-    text: 'Asigna cada partido a una cancha o mesa y horario. Ve cuáles están libres y cuáles en juego.',
-    icon: CalendarDays,
+    title: 'Llaves que avanzan solas',
+    text: 'Carga el resultado y el ganador pasa a la ronda siguiente, con byes automáticos, hasta el campeón.',
+    icon: Trophy,
     tone: 'bg-tertiary-500/15 text-tertiary-400',
   },
   {
@@ -66,7 +65,7 @@ const FEATURES: { title: string; text: string; icon: LucideIcon; tone: string }[
 const STEPS = [
   {
     title: 'Crea el torneo',
-    text: 'Elige deporte, formato y fechas. Por ejemplo: tenis de mesa individual con 8 mesas.',
+    text: 'Elige deporte, formato y fechas. Por ejemplo: tenis de mesa individual, al mejor de 5 sets.',
   },
   {
     title: 'Inscribe y sortea',
@@ -200,8 +199,8 @@ function HeroPreview() {
         <div className="m-5 mt-0 rounded-xl bg-neutral-850 px-4 py-3">
           <div className="flex items-center justify-between text-xs text-neutral-400">
             <span className="flex items-center gap-1.5">
-              <Table2 className="size-3.5" />
-              Mesa 3
+              <ListOrdered className="size-3.5" />
+              Grupo 3
             </span>
             <span className="text-secondary-400">4.º juego</span>
           </div>
@@ -251,8 +250,8 @@ export function HomePage() {
             </h1>
             <p className="mt-5 max-w-xl text-lg text-neutral-400">
               Del sorteo a la final en un solo lugar, para cualquier deporte. Inscribe a los
-              participantes, sortea los grupos, asigna canchas o mesas, carga resultados desde el
-              celular y comparte todo con un enlace.
+              participantes, sortea los grupos y las llaves, carga resultados desde el celular y
+              comparte todo con un enlace.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button onClick={openCreateTournament} className="h-11 px-5 text-base">

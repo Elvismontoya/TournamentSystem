@@ -177,7 +177,6 @@ export interface Settings {
   startDate: string | null;
   endDate: string | null;
   location: string;
-  courts: number | null;
   participantType: string;
   format: string;
   capacity: number;
@@ -212,7 +211,6 @@ export interface SettingsUpdate {
   startDate: string | null;
   endDate: string | null;
   location: string;
-  courts: number | null;
   participantType: string;
   format: string;
   capacity: number;
