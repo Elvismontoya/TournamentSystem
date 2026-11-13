@@ -1,1 +1,104 @@
 @import 'tailwindcss';
+
+/*
+ * Design system
+ * Primary #4F46E5 · Secondary #22C55E · Tertiary #F97316 · Neutral #0B0E14
+ * Headline / Label: Outfit · Body: Hanken Grotesk
+ */
+@theme {
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  --color-secondary-50: #f0fdf4;
+  --color-secondary-100: #dcfce7;
+  --color-secondary-200: #bbf7d0;
+  --color-secondary-300: #86efac;
+  --color-secondary-400: #4ade80;
+  --color-secondary-500: #22c55e;
+  --color-secondary-600: #16a34a;
+  --color-secondary-700: #15803d;
+  --color-secondary-800: #166534;
+  --color-secondary-900: #14532d;
+  --color-secondary-950: #052e16;
+
+  --color-tertiary-50: #fff7ed;
+  --color-tertiary-100: #ffedd5;
+  --color-tertiary-200: #fed7aa;
+  --color-tertiary-300: #fdba74;
+  --color-tertiary-400: #fb923c;
+  --color-tertiary-500: #f97316;
+  --color-tertiary-600: #ea580c;
+  --color-tertiary-700: #c2410c;
+  --color-tertiary-800: #9a3412;
+  --color-tertiary-900: #7c2d12;
+  --color-tertiary-950: #431407;
+
+  --color-neutral-50: #f4f5f7;
+  --color-neutral-100: #e6e8ec;
+  --color-neutral-200: #c9ccd4;
+  --color-neutral-300: #a4a9b5;
+  --color-neutral-400: #7c8191;
+  --color-neutral-500: #5c6170;
+  --color-neutral-600: #434754;
+  --color-neutral-700: #31343e;
+  --color-neutral-800: #23262e;
+  --color-neutral-850: #1b1d24;
+  --color-neutral-900: #14161c;
+  --color-neutral-950: #0b0e14;
+
+  --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Page container: uses most of the screen, with gutters that grow with it. */
+@utility page-container {
+  width: 100%;
+  max-width: 112rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+
+  @variant sm {
+    padding-inline: 1.5rem;
+  }
+  @variant lg {
+    padding-inline: 2.5rem;
+  }
+  @variant 2xl {
+    padding-inline: 4rem;
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  /* Scale everything up a bit on big monitors so the UI doesn't look tiny. */
+  html {
+    @media (width >= 120rem) {
+      font-size: 112.5%;
+    }
+    @media (width >= 160rem) {
+      font-size: 125%;
+    }
+  }
+
+  body {
+    @apply bg-neutral-950 font-sans text-neutral-200 antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display text-neutral-50;
+  }
+}
