@@ -131,6 +131,45 @@ export interface KnockoutDraw {
   warnings: string[];
 }
 
+/** Who occupies one side of a knockout match. */
+export type Entrant =
+  | { kind: 'player'; player: Player }
+  /** Empty position: the other side passes straight through. */
+  | { kind: 'bye' }
+  /** Not known yet (group not finished, or the previous match not played). */
+  | { kind: 'pending' };
+
+export interface KnockoutMatchView {
+  /** 0 = first round; the last round is the final. */
+  round: number;
+  /** Match number inside its round (0 = top). */
+  index: number;
+  /** "Cuartos de final", "Final"… */
+  roundName: string;
+  entrants: [Entrant, Entrant];
+  result: MatchResult;
+  summary: MatchSummary;
+  setWinners: (0 | 1 | null)[];
+  notation: [string, string];
+  /** Both players known: results can be entered. */
+  playable: boolean;
+  /** Who goes on: the winner, the side facing a bye, or pending. */
+  advances: Entrant;
+  /** The winner already has results in the next match: this one can't change. */
+  locked: boolean;
+}
+
+export interface KnockoutView extends KnockoutDraw {
+  /** Every round's matches; the last round holds the final. */
+  rounds: KnockoutMatchView[][];
+  champion: Player | null;
+  /** Any knockout result entered: the draw and the group stage can't change. */
+  hasResults: boolean;
+  /** Matches with two players, and how many of them are finished. */
+  playable: number;
+  played: number;
+}
+
 export interface Settings {
   sport: string;
   category: string;
@@ -161,6 +200,8 @@ export interface Settings {
   pointsWalkover: number;
   /** Results were entered: match rules (sets, points per set, margin) can't change. */
   rulesLocked: boolean;
+  /** Knockout results were entered: knockoutSetsPerMatch can't change. */
+  knockoutRulesLocked: boolean;
 }
 
 /** Body of PUT /configuracion: the name plus every editable setting. */
@@ -197,7 +238,7 @@ export interface TournamentView {
   /** Seeded players (top of the ranking, one per group), in seed order. */
   seedIds: string[];
   groupStage: GroupStageView | null;
-  knockout: KnockoutDraw | null;
+  knockout: KnockoutView | null;
 }
 
 export interface DrawPreview {

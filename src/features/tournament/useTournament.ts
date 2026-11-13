@@ -5,6 +5,7 @@ import type {
   BracketSlot,
   DrawPreview,
   ImportPreview,
+  MatchResult,
   NewPlayer,
   Player,
   SettingsUpdate,
@@ -39,6 +40,14 @@ export interface Tournament {
   setWalkover: (groupIndex: number, matchIndex: number, absent: 0 | 1 | null) => void;
   drawKnockout: () => void;
   moveKnockoutSlot: (position: number, slot: BracketSlot) => void;
+  updateKnockoutSet: (
+    round: number,
+    matchIndex: number,
+    setIndex: number,
+    side: 0 | 1,
+    value: number | null,
+  ) => void;
+  setKnockoutWalkover: (round: number, matchIndex: number, absent: 0 | 1 | null) => void;
 }
 
 export type TournamentState =
@@ -48,6 +57,52 @@ export type TournamentState =
 
 const messageOf = (error: unknown) =>
   error instanceof ApiError ? error.message : 'Ocurrió un error inesperado.';
+
+function setScore(
+  sets: MatchResult['sets'],
+  setIndex: number,
+  side: 0 | 1,
+  value: number | null,
+): MatchResult['sets'] {
+  return sets.map((set, index) => {
+    if (index !== setIndex) return set;
+    return side === 0 ? [value, set[1]] : [set[0], value];
+  });
+}
+
+/** Same as withSet, for a knockout match. */
+function withKnockoutSet(
+  view: TournamentView,
+  round: number,
+  matchIndex: number,
+  setIndex: number,
+  side: 0 | 1,
+  value: number | null,
+): TournamentView {
+  const { knockout } = view;
+  if (!knockout) return view;
+  return {
+    ...view,
+    knockout: {
+      ...knockout,
+      rounds: knockout.rounds.map((matches, ri) =>
+        ri !== round
+          ? matches
+          : matches.map((match, mi) =>
+              mi !== matchIndex
+                ? match
+                : {
+                    ...match,
+                    result: {
+                      ...match.result,
+                      sets: setScore(match.result.sets, setIndex, side, value),
+                    },
+                  },
+            ),
+      ),
+    },
+  };
+}
 
 /** Sets one score locally, so typing feels instant while the request is on its way. */
 function withSet(
@@ -76,10 +131,7 @@ function withSet(
                       ...match,
                       result: {
                         ...match.result,
-                        sets: match.result.sets.map((set, si) => {
-                          if (si !== setIndex) return set;
-                          return side === 0 ? [value, set[1]] : [set[0], value];
-                        }),
+                        sets: setScore(match.result.sets, setIndex, side, value),
                       },
                     },
               ),
@@ -215,6 +267,17 @@ export function useTournament(tournamentId: string): TournamentState {
       },
       moveKnockoutSlot: (position, slot) => {
         fire(mutate(() => tournamentsApi.moveKnockoutSlot(id, position, slot)));
+      },
+      updateKnockoutSet: (round, matchIndex, setIndex, side, value) => {
+        fire(
+          mutate(
+            () => tournamentsApi.updateKnockoutSet(id, round, matchIndex, setIndex, side, value),
+            (current) => withKnockoutSet(current, round, matchIndex, setIndex, side, value),
+          ),
+        );
+      },
+      setKnockoutWalkover: (round, matchIndex, absent) => {
+        fire(mutate(() => tournamentsApi.setKnockoutWalkover(id, round, matchIndex, absent)));
       },
     },
   };

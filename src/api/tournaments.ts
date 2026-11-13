@@ -69,4 +69,25 @@ export const tournamentsApi = {
 
   moveKnockoutSlot: (id: string, position: number, slot: BracketSlot) =>
     request<TournamentView>('PUT', `${base(id)}/llaves/posiciones/${String(position)}`, { slot }),
+
+  updateKnockoutSet: (
+    id: string,
+    round: number,
+    matchIndex: number,
+    setIndex: number,
+    side: 0 | 1,
+    value: number | null,
+  ) =>
+    request<TournamentView>(
+      'PUT',
+      `${base(id)}/llaves/rondas/${String(round)}/partidos/${String(matchIndex)}/sets/${String(setIndex)}`,
+      { side, value },
+    ),
+
+  setKnockoutWalkover: (id: string, round: number, matchIndex: number, absent: 0 | 1 | null) =>
+    request<TournamentView>(
+      'PUT',
+      `${base(id)}/llaves/rondas/${String(round)}/partidos/${String(matchIndex)}/wo`,
+      { absent },
+    ),
 };
