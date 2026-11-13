@@ -23,6 +23,7 @@ import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
+import { STATUS_LABEL, tournamentStatus } from '../features/tournament/progress.ts';
 import { dateRangeText } from '../features/tournament/settingsText.ts';
 import { useTournament } from '../features/tournament/useTournament.ts';
 
@@ -37,6 +38,13 @@ const SECTIONS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: 'llaves', label: 'Llaves', icon: Network },
   { to: 'configuracion', label: 'Configuración', icon: Settings },
 ];
+
+const STATUS_TONE = {
+  draft: 'neutral',
+  registration: 'primary',
+  playing: 'secondary',
+  finished: 'tertiary',
+} as const;
 
 function Meta({ icon: Icon, children }: { icon: LucideIcon; children: string }) {
   return (
@@ -76,6 +84,7 @@ export function TournamentLayout() {
 
   const { tournament } = state;
   const { name, settings } = tournament.view;
+  const status = tournamentStatus(tournament.view);
   const details: [LucideIcon, string | null][] = [
     [Table2, settings.sport],
     [User, settings.category],
@@ -100,7 +109,7 @@ export function TournamentLayout() {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold sm:text-3xl">{name}</h1>
-            <Badge>Borrador</Badge>
+            <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
           </div>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-400">
             {details.map(

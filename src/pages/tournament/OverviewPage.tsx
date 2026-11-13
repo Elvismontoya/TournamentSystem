@@ -1,9 +1,28 @@
-import { CalendarDays, Check, Lock, Pencil, Swords, Users, type LucideIcon } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  Lock,
+  Network,
+  Pencil,
+  Shuffle,
+  Swords,
+  Trophy,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
-import type { Settings } from '../../api/types.ts';
+import type { Settings, TournamentView } from '../../api/types.ts';
+import { Badge } from '../../components/ui/Badge.tsx';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
 import { Card } from '../../components/ui/Card.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { PlayerBib } from '../../features/groupStage/PlayerBadges.tsx';
+import {
+  setupSteps,
+  startStat,
+  upcomingMatches,
+  type SetupStep,
+} from '../../features/tournament/progress.ts';
 import {
   bestOfLabel,
   dateRangeText,
@@ -12,41 +31,11 @@ import {
 } from '../../features/tournament/settingsText.ts';
 import type { Tournament } from '../../features/tournament/useTournament.ts';
 
-// Mockup: the checklist, stats and upcoming matches are fixed example content. "Detalles del
-// torneo" shows the real settings (Configuración).
+// Tournament overview: progress from registration to the champion, key figures, the next
+// matches to play and the settings. Everything comes from the API's view.
 
-interface SetupStep {
-  title: string;
-  text: string;
-  state: 'done' | 'current' | 'locked';
-  action?: { label: string; to: string };
-}
-
-const SETUP_STEPS: SetupStep[] = [
-  { title: 'Crear el torneo', text: 'Deporte, formato y fechas definidos.', state: 'done' },
-  {
-    title: 'Inscribir participantes',
-    text: '16 de 16 inscritos. El ranking ordena las cabezas de serie.',
-    state: 'done',
-  },
-  {
-    title: 'Sortear los grupos',
-    text: 'Los 4 primeros del ranking encabezan los grupos; el resto se reparte al azar.',
-    state: 'current',
-    action: { label: 'Sortear grupos', to: 'grupos' },
-  },
-  {
-    title: 'Publicar y compartir',
-    text: 'Activa la página pública y comparte el enlace o el código QR.',
-    state: 'locked',
-  },
-];
-
-const STATS: { label: string; value: string; detail: string; icon: LucideIcon }[] = [
-  { label: 'Participantes', value: '16', detail: 'de 16 cupos', icon: Users },
-  { label: 'Partidos jugados', value: '0', detail: 'aún sin sorteo', icon: Swords },
-  { label: 'Días para el inicio', value: '3', detail: '15 nov 2026', icon: CalendarDays },
-];
+/** How many upcoming matches to list. */
+const UPCOMING_LIMIT = 6;
 
 /** Rows of "Detalles del torneo"; settings left empty are skipped. */
 function detailsOf(settings: Settings): [string, string][] {
@@ -66,6 +55,36 @@ function detailsOf(settings: Settings): [string, string][] {
     ['Desempate', 'Puntos → Entre empatados: puntos, sets, puntos de juego → Sorteo'],
   ];
   return rows.filter((row): row is [string, string] => Boolean(row[1]));
+}
+
+function statsOf(view: TournamentView): {
+  label: string;
+  value: string;
+  detail: string;
+  icon: LucideIcon;
+}[] {
+  const { players, settings, groupStage, knockout } = view;
+  const free = settings.capacity - players.length;
+  const played = (groupStage?.played ?? 0) + (knockout?.played ?? 0);
+  const total = (groupStage?.total ?? 0) + (knockout?.playable ?? 0);
+  return [
+    {
+      label: 'Participantes',
+      value: String(players.length),
+      detail:
+        free > 0
+          ? `de ${String(settings.capacity)} cupos · quedan ${String(free)}`
+          : `de ${String(settings.capacity)} cupos · completo`,
+      icon: Users,
+    },
+    {
+      label: 'Partidos jugados',
+      value: String(played),
+      detail: groupStage ? `de ${String(total)} definidos (grupos y llaves)` : 'aún sin sorteo',
+      icon: Swords,
+    },
+    { label: 'Inicio', ...startStat(view), icon: CalendarDays },
+  ];
 }
 
 function StepMarker({ state, index }: { state: SetupStep['state']; index: number }) {
@@ -90,44 +109,147 @@ function StepMarker({ state, index }: { state: SetupStep['state']; index: number
   );
 }
 
+/** Next matches, the champion, or what to do to get matches. */
+function Upcoming({ view }: { view: TournamentView }) {
+  const { players, settings, groupStage, knockout } = view;
+
+  if (knockout?.champion) {
+    const { champion } = knockout;
+    return (
+      <Card className="flex items-center gap-4 border-tertiary-500/40 bg-tertiary-500/5">
+        <Trophy className="size-8 shrink-0 text-tertiary-300" aria-hidden="true" />
+        <div>
+          <p className="text-sm text-neutral-400">Campeón</p>
+          <p className="flex items-center gap-2 font-display text-xl font-semibold text-white">
+            <PlayerBib value={champion.bib} />
+            {champion.name}
+          </p>
+          <p className="text-sm text-neutral-500">{champion.delegation}</p>
+        </div>
+      </Card>
+    );
+  }
+
+  const matches = upcomingMatches(view);
+  if (matches.length > 0) {
+    return (
+      <Card className="p-0">
+        <ul className="divide-y divide-neutral-800">
+          {matches.slice(0, UPCOMING_LIMIT).map((match) => (
+            <li key={match.key} className="flex items-center gap-3 px-5 py-3 text-sm">
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-xs text-neutral-500">
+                  {match.label}
+                  {match.started && <Badge tone="tertiary">En juego</Badge>}
+                </p>
+                <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <PlayerBib value={match.players[0].bib} />
+                    <span className="truncate text-neutral-100">{match.players[0].name}</span>
+                  </span>
+                  <span className="text-xs text-neutral-600">vs</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <PlayerBib value={match.players[1].bib} />
+                    <span className="truncate text-neutral-100">{match.players[1].name}</span>
+                  </span>
+                </p>
+              </div>
+              <ButtonLink to={match.to} variant="ghost" className="h-8 shrink-0 px-3 text-xs">
+                Cargar
+              </ButtonLink>
+            </li>
+          ))}
+        </ul>
+        {matches.length > UPCOMING_LIMIT && (
+          <p className="border-t border-neutral-800 px-5 py-3 text-xs text-neutral-500">
+            Y {matches.length - UPCOMING_LIMIT} partidos más.
+          </p>
+        )}
+      </Card>
+    );
+  }
+
+  // No match waiting for a result: tell what unlocks the next ones.
+  if (!groupStage) {
+    const enough = players.length >= settings.minGroupSize;
+    return (
+      <EmptyState
+        icon={enough ? Shuffle : Users}
+        title="Todavía no hay partidos"
+        text={
+          enough
+            ? 'Los partidos de cada grupo se generan al sortear los grupos.'
+            : `Inscribe al menos ${String(settings.minGroupSize)} participantes para poder sortear los grupos.`
+        }
+      >
+        <ButtonLink to={enough ? 'grupos' : 'participantes'} variant="soft">
+          {enough ? 'Sortear grupos' : 'Añadir participantes'}
+        </ButtonLink>
+      </EmptyState>
+    );
+  }
+  return (
+    <EmptyState
+      icon={Network}
+      title={knockout ? 'Esperando a los clasificados' : 'Fase de grupos terminada'}
+      text={
+        knockout
+          ? 'Los partidos de llaves aparecen cuando sus dos jugadores están definidos.'
+          : 'Sortea las llaves para seguir con el cuadro principal.'
+      }
+    >
+      <ButtonLink to="llaves" variant="soft">
+        {knockout ? 'Ver llaves' : 'Sortear llaves'}
+      </ButtonLink>
+    </EmptyState>
+  );
+}
+
 export function OverviewPage() {
   const { view } = useOutletContext<Tournament>();
   const details = detailsOf(view.settings);
-  const completed = SETUP_STEPS.filter((step) => step.state === 'done').length;
-  const progress = Math.round((completed / SETUP_STEPS.length) * 100);
+  const steps = setupSteps(view);
+  const stats = statsOf(view);
+  const completed = steps.filter((step) => step.state === 'done').length;
+  const progress = Math.round((completed / steps.length) * 100);
+  const finished = completed === steps.length;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Setup checklist */}
+      {/* Progress: from registration to the champion */}
       <Card className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Configura tu torneo</h2>
+            <h2 className="text-lg font-semibold">
+              {finished ? 'Torneo terminado' : 'Avance del torneo'}
+            </h2>
             <p className="text-sm text-neutral-400">
-              Completa estos pasos para dejar el torneo listo para jugar.
+              {finished
+                ? 'Todos los partidos están jugados y hay campeón.'
+                : 'Del registro de participantes al campeón. El paso resaltado es el siguiente.'}
             </p>
           </div>
           <p className="font-display text-sm text-neutral-300">
-            {completed} de {SETUP_STEPS.length} pasos
+            {completed} de {steps.length} pasos
           </p>
         </div>
 
         <div
           className="h-1.5 overflow-hidden rounded-full bg-neutral-800"
           role="progressbar"
-          aria-label="Progreso de configuración"
+          aria-label="Avance del torneo"
           aria-valuenow={progress}
           aria-valuemin={0}
           aria-valuemax={100}
         >
           <div
-            className="h-full rounded-full bg-secondary-500"
+            className="h-full rounded-full bg-secondary-500 transition-[width]"
             style={{ width: `${String(progress)}%` }}
           />
         </div>
 
-        <ol className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
-          {SETUP_STEPS.map((step, index) => (
+        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          {steps.map((step, index) => (
             <li
               key={step.title}
               className={`flex gap-4 rounded-xl border p-4 ${
@@ -141,7 +263,7 @@ export function OverviewPage() {
                 <p
                   className={`font-display font-medium ${
                     step.state === 'locked' ? 'text-neutral-500' : 'text-white'
-                  } ${step.state === 'done' ? 'line-through decoration-neutral-600' : ''}`}
+                  }`}
                 >
                   {step.title}
                 </p>
@@ -157,9 +279,9 @@ export function OverviewPage() {
         </ol>
       </Card>
 
-      {/* Stats */}
-      <section aria-label="Resumen" className="grid gap-4 sm:grid-cols-3">
-        {STATS.map(({ label, value, detail, icon: Icon }) => (
+      {/* Key figures */}
+      <section aria-label="Cifras del torneo" className="grid gap-4 sm:grid-cols-3">
+        {stats.map(({ label, value, detail, icon: Icon }) => (
           <Card key={label} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
               <p className="font-display text-xs font-semibold tracking-wider text-neutral-400 uppercase">
@@ -177,17 +299,9 @@ export function OverviewPage() {
         {/* Upcoming matches */}
         <section aria-labelledby="upcoming-heading" className="flex flex-col gap-3">
           <h2 id="upcoming-heading" className="text-lg font-semibold">
-            Próximos partidos
+            {view.knockout?.champion ? 'Resultado final' : 'Próximos partidos'}
           </h2>
-          <EmptyState
-            icon={CalendarDays}
-            title="Todavía no hay partidos"
-            text="Los partidos aparecerán aquí cuando inscribas jugadores y sortees los grupos."
-          >
-            <ButtonLink to="participantes" variant="soft">
-              Añadir participantes
-            </ButtonLink>
-          </EmptyState>
+          <Upcoming view={view} />
         </section>
 
         {/* Tournament details */}
