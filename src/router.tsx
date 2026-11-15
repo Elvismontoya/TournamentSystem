@@ -9,6 +9,7 @@ import { GroupsPage } from './pages/tournament/GroupsPage.tsx';
 import { MatchesPage } from './pages/tournament/MatchesPage.tsx';
 import { OverviewPage } from './pages/tournament/OverviewPage.tsx';
 import { ParticipantsPage } from './pages/tournament/ParticipantsPage.tsx';
+import { RankingPage } from './pages/tournament/RankingPage.tsx';
 import { SettingsPage } from './pages/tournament/SettingsPage.tsx';
 
 export const router = createBrowserRouter([
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { path: 'partidos', element: <MatchesPage /> },
           { path: 'grupos', element: <GroupsPage /> },
           { path: 'llaves', element: <BracketsPage /> },
+          { path: 'clasificacion', element: <RankingPage /> },
           { path: 'configuracion', element: <SettingsPage /> },
         ],
       },

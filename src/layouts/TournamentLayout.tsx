@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   ListOrdered,
   MapPin,
+  Medal,
   Network,
   Rocket,
   Settings,
@@ -36,6 +37,7 @@ const SECTIONS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: 'grupos', label: 'Grupos', icon: ListOrdered },
   { to: 'partidos', label: 'Partidos', icon: CalendarDays },
   { to: 'llaves', label: 'Llaves', icon: Network },
+  { to: 'clasificacion', label: 'Clasificación', icon: Medal },
   { to: 'configuracion', label: 'Configuración', icon: Settings },
 ];
 
