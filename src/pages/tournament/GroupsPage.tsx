@@ -144,12 +144,13 @@ function DrawSetup({
             {seeded ? (
               <>
                 Los {current?.groupCount ?? '…'} primeros del ranking encabezan un grupo cada uno
-                (jugador 1 del grupo). El resto se reparte al azar.
+                (jugador 1 del grupo). El resto se reparte al azar, separando a los de la misma
+                delegación siempre que se pueda.
               </>
             ) : (
               <>
                 Desactivadas en Configuración: todos los jugadores se reparten al azar, sin mirar el
-                ranking.
+                ranking, separando a los de la misma delegación siempre que se pueda.
               </>
             )}
           </p>

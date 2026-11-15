@@ -170,7 +170,14 @@ export interface KnockoutMatchView {
 export interface KnockoutView extends KnockoutDraw {
   /** Every round's matches; the last round holds the final. */
   rounds: KnockoutMatchView[][];
+  /**
+   * Match for 3rd place between the semifinal losers (round = the final's round, index 1),
+   * or null if it isn't played (then both share 3rd place).
+   */
+  thirdPlace: KnockoutMatchView | null;
   champion: Player | null;
+  /** Final decided and, if it is played, the match for 3rd place too. */
+  finished: boolean;
   /** Any knockout result entered: the draw and the group stage can't change. */
   hasResults: boolean;
   /** Matches with two players, and how many of them are finished. */
@@ -202,6 +209,8 @@ export interface Settings {
   gamePoints: number;
   winMargin: number;
   knockoutSetsPerMatch: number;
+  /** The semifinal losers play for 3rd place; when false, both share 3rd place. */
+  thirdPlaceMatch: boolean;
   pointsWin: number;
   pointsLoss: number;
   pointsWalkover: number;
@@ -209,6 +218,8 @@ export interface Settings {
   rulesLocked: boolean;
   /** Knockout results were entered: knockoutSetsPerMatch can't change. */
   knockoutRulesLocked: boolean;
+  /** The match for 3rd place has results: it can't be turned off. */
+  thirdPlaceLocked: boolean;
 }
 
 /** Body of PUT /configuracion: the name plus every editable setting. */
@@ -228,9 +239,19 @@ export interface SettingsUpdate {
   gamePoints: number;
   winMargin: number;
   knockoutSetsPerMatch: number;
+  thirdPlaceMatch: boolean;
   pointsWin: number;
   pointsLoss: number;
   pointsWalkover: number;
+}
+
+/** One line of the final ranking. */
+export interface RankingEntry {
+  /** Shared by players eliminated in the same round (e.g. every quarterfinal loser is 5th). */
+  position: number;
+  player: Player;
+  /** Where they finished: "Campeón", "Subcampeón", "Cuartos de final"… */
+  reached: string;
 }
 
 export interface TournamentView {
@@ -245,6 +266,8 @@ export interface TournamentView {
   seedIds: string[];
   groupStage: GroupStageView | null;
   knockout: KnockoutView | null;
+  /** Final ranking (every player who played), once the knockout is over; null before. */
+  ranking: RankingEntry[] | null;
 }
 
 export interface DrawPreview {
