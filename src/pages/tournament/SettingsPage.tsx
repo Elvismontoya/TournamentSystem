@@ -28,6 +28,7 @@ interface FormValues {
   capacity: string;
   defaultGroupSize: string;
   seeded: boolean;
+  thirdPlaceMatch: boolean;
   setsPerMatch: number;
   knockoutSetsPerMatch: number;
   gamePoints: string;
@@ -55,6 +56,7 @@ function valuesOf({ name, settings }: TournamentView): FormValues {
     capacity: String(settings.capacity),
     defaultGroupSize: String(settings.defaultGroupSize),
     seeded: settings.seeded,
+    thirdPlaceMatch: settings.thirdPlaceMatch,
     setsPerMatch: settings.setsPerMatch,
     knockoutSetsPerMatch: settings.knockoutSetsPerMatch,
     gamePoints: String(settings.gamePoints),
@@ -87,6 +89,7 @@ function updateOf(values: FormValues): SettingsUpdate {
     capacity: integer(values.capacity, 'Cupos'),
     defaultGroupSize: integer(values.defaultGroupSize, 'Participantes por grupo'),
     seeded: values.seeded,
+    thirdPlaceMatch: values.thirdPlaceMatch,
     setsPerMatch: values.setsPerMatch,
     knockoutSetsPerMatch: values.knockoutSetsPerMatch,
     gamePoints: integer(values.gamePoints, 'Puntos por set'),
@@ -399,6 +402,26 @@ export function SettingsPage() {
             />
             Usar el ranking para ubicar cabezas de serie en el sorteo
           </label>
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-3 text-sm text-neutral-300">
+              <input
+                type="checkbox"
+                checked={values.thirdPlaceMatch}
+                disabled={settings.thirdPlaceLocked}
+                aria-describedby="settings-third-place-hint"
+                onChange={(event) => {
+                  set('thirdPlaceMatch', event.target.checked);
+                }}
+                className="size-4 accent-primary-500"
+              />
+              Jugar partido por el 3.er puesto
+            </label>
+            <p id="settings-third-place-hint" className="pl-7 text-xs text-neutral-500">
+              {settings.thirdPlaceLocked
+                ? 'Ya tiene resultados: bórralos en Llaves para poder quitarlo.'
+                : 'Lo juegan los perdedores de semifinal. Si no se juega, los dos comparten el 3.er puesto.'}
+            </p>
+          </div>
         </SettingsCard>
 
         <SettingsCard

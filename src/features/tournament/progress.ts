@@ -16,13 +16,16 @@ export const STATUS_LABEL: Record<TournamentStatus, string> = {
   finished: 'Finalizado',
 };
 
-/** Borrador (nobody registered) → Inscripciones → En curso (first result) → Finalizado (champion). */
+/**
+ * Borrador (nobody registered) → Inscripciones → En curso (first result) → Finalizado
+ * (champion and, if it is played, the match for 3rd place decided).
+ */
 export function tournamentStatus({
   players,
   groupStage,
   knockout,
 }: TournamentView): TournamentStatus {
-  if (knockout?.champion) return 'finished';
+  if (knockout?.finished) return 'finished';
   if (groupStage?.hasResults || knockout?.hasResults) return 'playing';
   if (players.length > 0) return 'registration';
   return 'draft';
@@ -60,8 +63,8 @@ export function setupSteps(view: TournamentView): SetupStep[] {
       text: groupStage
         ? `${String(groupStage.groups.length)} grupos sorteados.`
         : settings.seeded
-          ? 'Los mejores del ranking encabezan los grupos; el resto se reparte al azar.'
-          : 'Todos los jugadores se reparten al azar.',
+          ? 'Los mejores del ranking encabezan los grupos; el resto se reparte al azar, separando delegaciones.'
+          : 'Todos los jugadores se reparten al azar, separando delegaciones.',
       done: groupStage !== null,
       action: { label: 'Sortear grupos', to: 'grupos' },
     },
@@ -83,12 +86,14 @@ export function setupSteps(view: TournamentView): SetupStep[] {
     },
     {
       title: 'Jugar las llaves',
-      text: knockout?.champion
-        ? `Campeón: ${knockout.champion.name}.`
-        : knockout
-          ? `${String(knockout.played)} de ${String(knockout.playable)} partidos jugados.`
-          : 'El ganador de cada partido pasa solo a la ronda siguiente.',
-      done: Boolean(knockout?.champion),
+      text: knockout?.finished
+        ? `Campeón: ${knockout.champion?.name ?? '—'}.`
+        : knockout?.champion
+          ? `Campeón: ${knockout.champion.name}. Falta el partido por el 3.er puesto.`
+          : knockout
+            ? `${String(knockout.played)} de ${String(knockout.playable)} partidos jugados.`
+            : 'El ganador de cada partido pasa solo a la ronda siguiente.',
+      done: Boolean(knockout?.finished),
       action: { label: 'Ir a las llaves', to: 'llaves' },
     },
   ];
@@ -120,7 +125,7 @@ function daysBetween(from: string, to: string): number {
 export function startStat(view: TournamentView): { value: string; detail: string } {
   const { settings, knockout } = view;
   const range = dateRangeText(settings);
-  if (knockout?.champion) return { value: 'Finalizado', detail: range ?? 'Ya hay campeón' };
+  if (knockout?.finished) return { value: 'Finalizado', detail: range ?? 'Ya hay campeón' };
   if (!settings.startDate) return { value: '—', detail: 'Sin fecha de inicio (Configuración)' };
 
   const today = todayIso();
@@ -176,14 +181,20 @@ export function upcomingMatches({ groupStage, knockout }: TournamentView): Upcom
   );
   group.sort((a, b) => a.order - b.order);
 
-  const bracket: UpcomingMatch[] = (knockout?.rounds ?? []).flat().flatMap((match) => {
+  const knockoutMatches = knockout
+    ? [...knockout.rounds.flat(), ...(knockout.thirdPlace ? [knockout.thirdPlace] : [])]
+    : [];
+  const bracket: UpcomingMatch[] = knockoutMatches.flatMap((match) => {
     const [a, b] = match.entrants;
     if (!match.playable || match.summary.finished) return [];
     if (a.kind !== 'player' || b.kind !== 'player') return [];
     return [
       {
         key: `k-${String(match.round)}-${String(match.index)}`,
-        label: `${match.roundName} · ${String(match.index + 1)}`,
+        label:
+          match === knockout?.thirdPlace
+            ? match.roundName
+            : `${match.roundName} · ${String(match.index + 1)}`,
         players: [a.player, b.player],
         started: match.summary.started,
         to: 'llaves',

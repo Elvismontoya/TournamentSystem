@@ -5,6 +5,7 @@ import type {
   BracketSlot,
   DrawPreview,
   ImportPreview,
+  KnockoutMatchView,
   MatchResult,
   NewPlayer,
   Player,
@@ -86,6 +87,14 @@ function withKnockoutSet(
 ): TournamentView {
   const { knockout } = view;
   if (!knockout) return view;
+  const withScore = (match: KnockoutMatchView): KnockoutMatchView => ({
+    ...match,
+    result: { ...match.result, sets: setScore(match.result.sets, setIndex, side, value) },
+  });
+  // The match for 3rd place is match 1 of the final's round.
+  if (knockout.thirdPlace && round === knockout.rounds.length - 1 && matchIndex === 1) {
+    return { ...view, knockout: { ...knockout, thirdPlace: withScore(knockout.thirdPlace) } };
+  }
   return {
     ...view,
     knockout: {
@@ -93,17 +102,7 @@ function withKnockoutSet(
       rounds: knockout.rounds.map((matches, ri) =>
         ri !== round
           ? matches
-          : matches.map((match, mi) =>
-              mi !== matchIndex
-                ? match
-                : {
-                    ...match,
-                    result: {
-                      ...match.result,
-                      sets: setScore(match.result.sets, setIndex, side, value),
-                    },
-                  },
-            ),
+          : matches.map((match, mi) => (mi !== matchIndex ? match : withScore(match))),
       ),
     },
   };

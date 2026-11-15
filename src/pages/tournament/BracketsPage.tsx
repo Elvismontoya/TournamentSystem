@@ -23,7 +23,7 @@ import {
 } from '../../features/tournament/settingsText.ts';
 
 const LOCKED_MATCH =
-  'El ganador ya tiene resultados en el partido siguiente: bórralos primero para cambiar este.';
+  'Ya hay resultados en el partido siguiente (o en el del 3.er puesto): bórralos primero para cambiar este.';
 
 /** Knockout matches to play, round by round, with the same scoresheet as the group stage. */
 function KnockoutMatches({
@@ -37,7 +37,11 @@ function KnockoutMatches({
   onSet: Tournament['updateKnockoutSet'];
   onWalkover: Tournament['setKnockoutWalkover'];
 }) {
-  const rounds = knockout.rounds
+  const { thirdPlace } = knockout;
+  // The match for 3rd place goes right before the final (it is usually played first).
+  const sections = [...knockout.rounds];
+  if (thirdPlace) sections.splice(-1, 0, [thirdPlace]);
+  const rounds = sections
     .map((matches) => ({
       name: matches[0]?.roundName ?? '',
       playable: matches.filter((match) => match.playable),
@@ -56,7 +60,10 @@ function KnockoutMatches({
           </h3>
           <p className="text-sm text-neutral-400">
             Carga cada partido: el ganador pasa solo a la ronda siguiente. {setRuleText(settings)} ·{' '}
-            {bestOfLabel(settings.knockoutSetsPerMatch).toLowerCase()}.
+            {bestOfLabel(settings.knockoutSetsPerMatch).toLowerCase()}.{' '}
+            {thirdPlace
+              ? 'Los perdedores de semifinal juegan por el 3.er puesto.'
+              : 'Sin partido por el 3.er puesto: los perdedores de semifinal comparten el 3.º.'}
           </p>
         </div>
         <span className="text-sm text-neutral-400 tabular-nums">
@@ -87,15 +94,23 @@ function KnockoutMatches({
               {round.playable.map((match) => {
                 const [a, b] = match.entrants;
                 if (a.kind !== 'player' || b.kind !== 'player') return null;
+                const label =
+                  match === thirdPlace
+                    ? match.roundName
+                    : `${match.roundName} · ${String(match.index + 1)}`;
                 return (
                   <ScoreCard
                     key={`${String(match.round)}-${String(match.index)}`}
                     header={
                       <span className="rounded-md bg-primary-500/15 px-2 py-0.5 font-display text-sm font-bold text-primary-300">
-                        {match.roundName} · {match.index + 1}
+                        {label}
                       </span>
                     }
-                    caption={`${match.roundName}, partido ${String(match.index + 1)}`}
+                    caption={
+                      match === thirdPlace
+                        ? 'Partido por el 3.er puesto'
+                        : `${match.roundName}, partido ${String(match.index + 1)}`
+                    }
                     sides={[{ player: a.player }, { player: b.player }]}
                     match={match}
                     walkoverText={knockoutWalkoverText(settings)}
@@ -121,6 +136,7 @@ const RULES = [
   'Los primeros de grupo son cabezas de serie: 1.º G1 arriba del todo, 1.º G2 abajo del todo, 1.º G3 y G4 al centro, y así sucesivamente.',
   'Los segundos se sortean en la mitad opuesta a su primero: si el 1.º del grupo va arriba, su 2.º va abajo. Solo pueden cruzarse en la final.',
   'Si los clasificados no llenan el cuadro, los mejores primeros pasan directo (bye).',
+  'En la primera ronda se evita que se crucen jugadores de la misma delegación (los independientes o sin delegación no cuentan). Para eso conviene sortear cuando los grupos ya terminaron: así se conocen los clasificados.',
 ];
 
 function QualifierList({
@@ -326,7 +342,22 @@ export function BracketsPage() {
                   {knockout.champion.name}
                 </p>
                 <p className="text-sm text-neutral-500">{knockout.champion.delegation}</p>
+                {!knockout.finished && (
+                  <p className="mt-1 text-sm text-tertiary-200">
+                    Falta el partido por el 3.er puesto para cerrar la clasificación.
+                  </p>
+                )}
               </div>
+              {knockout.finished && (
+                <ButtonLink
+                  to="../clasificacion"
+                  relative="path"
+                  variant="soft"
+                  className="ml-auto shrink-0"
+                >
+                  Ver clasificación final
+                </ButtonLink>
+              )}
             </Card>
           )}
           <Card className="p-5">

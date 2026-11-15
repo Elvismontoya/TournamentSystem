@@ -17,6 +17,7 @@ import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
 import { Card } from '../../components/ui/Card.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PlayerBib } from '../../features/groupStage/PlayerBadges.tsx';
+import { FinalRanking } from '../../features/knockout/FinalRanking.tsx';
 import {
   setupSteps,
   startStat,
@@ -36,6 +37,8 @@ import type { Tournament } from '../../features/tournament/useTournament.ts';
 
 /** How many upcoming matches to list. */
 const UPCOMING_LIMIT = 6;
+/** How many lines of the final ranking to show (the full one is in Clasificación). */
+const RANKING_LIMIT = 8;
 
 /** Rows of "Detalles del torneo"; settings left empty are skipped. */
 function detailsOf(settings: Settings): [string, string][] {
@@ -109,24 +112,27 @@ function StepMarker({ state, index }: { state: SetupStep['state']; index: number
   );
 }
 
-/** Next matches, the champion, or what to do to get matches. */
+/** Next matches, the final result, or what to do to get matches. */
 function Upcoming({ view }: { view: TournamentView }) {
-  const { players, settings, groupStage, knockout } = view;
+  const { players, settings, groupStage, knockout, ranking } = view;
 
-  if (knockout?.champion) {
+  if (knockout?.champion && ranking) {
     const { champion } = knockout;
     return (
-      <Card className="flex items-center gap-4 border-tertiary-500/40 bg-tertiary-500/5">
-        <Trophy className="size-8 shrink-0 text-tertiary-300" aria-hidden="true" />
-        <div>
-          <p className="text-sm text-neutral-400">Campeón</p>
-          <p className="flex items-center gap-2 font-display text-xl font-semibold text-white">
-            <PlayerBib value={champion.bib} />
-            {champion.name}
-          </p>
-          <p className="text-sm text-neutral-500">{champion.delegation}</p>
-        </div>
-      </Card>
+      <div className="flex flex-col gap-3">
+        <Card className="flex items-center gap-4 border-tertiary-500/40 bg-tertiary-500/5">
+          <Trophy className="size-8 shrink-0 text-tertiary-300" aria-hidden="true" />
+          <div>
+            <p className="text-sm text-neutral-400">Campeón</p>
+            <p className="flex items-center gap-2 font-display text-xl font-semibold text-white">
+              <PlayerBib value={champion.bib} />
+              {champion.name}
+            </p>
+            <p className="text-sm text-neutral-500">{champion.delegation}</p>
+          </div>
+        </Card>
+        <FinalRanking ranking={ranking} limit={RANKING_LIMIT} fullTo="clasificacion" />
+      </div>
     );
   }
 
@@ -299,7 +305,7 @@ export function OverviewPage() {
         {/* Upcoming matches */}
         <section aria-labelledby="upcoming-heading" className="flex flex-col gap-3">
           <h2 id="upcoming-heading" className="text-lg font-semibold">
-            {view.knockout?.champion ? 'Resultado final' : 'Próximos partidos'}
+            {view.ranking ? 'Resultado final' : 'Próximos partidos'}
           </h2>
           <Upcoming view={view} />
         </section>
