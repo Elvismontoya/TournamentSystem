@@ -1,8 +1,18 @@
-import { CalendarDays, Check, Lock, Pencil, Swords, Users, type LucideIcon } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  Lock,
+  Pencil,
+  Swords,
+  Trophy,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
-import type { Settings, TournamentView } from '../../api/types.ts';
+import type { Player, Settings, TournamentView } from '../../api/types.ts';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
 import { Card } from '../../components/ui/Card.tsx';
+import { PlayerBib } from '../../features/groupStage/PlayerBadges.tsx';
 import { setupSteps, startStat, type SetupStep } from '../../features/tournament/progress.ts';
 import {
   bestOfLabel,
@@ -93,6 +103,28 @@ function StepMarker({ state, index }: { state: SetupStep['state']; index: number
   );
 }
 
+/** The tournament's winner, with a link to the full final ranking. */
+function ChampionCard({ champion }: { champion: Player }) {
+  return (
+    <Card className="flex flex-wrap items-center gap-4 border-tertiary-500/40 bg-tertiary-500/5">
+      <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-tertiary-500/15">
+        <Trophy className="size-7 text-tertiary-300" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm text-neutral-400">Campeón del torneo</p>
+        <p className="flex items-center gap-2 font-display text-xl font-semibold text-white">
+          <PlayerBib value={champion.bib} />
+          {champion.name}
+        </p>
+        {champion.delegation && <p className="text-sm text-neutral-500">{champion.delegation}</p>}
+      </div>
+      <ButtonLink to="clasificacion" variant="soft" className="ml-auto shrink-0">
+        Ver clasificación final
+      </ButtonLink>
+    </Card>
+  );
+}
+
 export function OverviewPage() {
   const { view } = useOutletContext<Tournament>();
   const details = detailsOf(view.settings);
@@ -104,6 +136,11 @@ export function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Champion, once the tournament is over (final and 3rd place decided) */}
+      {view.knockout?.finished && view.knockout.champion && (
+        <ChampionCard champion={view.knockout.champion} />
+      )}
+
       {/* Progress: from registration to the champion */}
       <Card className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
