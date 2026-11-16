@@ -1,8 +1,8 @@
 // Where the tournament stands, derived from the API's view (no extra requests): status,
-// setup steps, the start countdown and the next matches to play. Display only: the rules
+// setup steps and the start countdown. Display only: the rules
 // (who won, who advances) are already decided by the server.
 
-import type { Player, TournamentView } from '../../api/types.ts';
+import type { TournamentView } from '../../api/types.ts';
 import { dateRangeText } from './settingsText.ts';
 
 /* ---------- Status ---------- */
@@ -141,66 +141,4 @@ export function startStat(view: TournamentView): { value: string; detail: string
     return { value: 'En curso', detail: `Día ${String(day)} de ${String(length)}` };
   }
   return { value: 'Terminó', detail: range ?? '' };
-}
-
-/* ---------- Next matches ---------- */
-
-export interface UpcomingMatch {
-  key: string;
-  /** "Grupo 2 · Partido 3", "Cuartos de final · 2". */
-  label: string;
-  players: [Player, Player];
-  /** Some score entered already. */
-  started: boolean;
-  /** Section where its result is entered. */
-  to: string;
-}
-
-/**
- * Matches still to finish, in the order they would be played: group matches by round
- * (every group's 1st match, then every group's 2nd…), then knockout matches with both players.
- */
-export function upcomingMatches({ groupStage, knockout }: TournamentView): UpcomingMatch[] {
-  const group: { order: number; match: UpcomingMatch }[] = (groupStage?.groups ?? []).flatMap(
-    (current, groupIndex) =>
-      current.matches
-        .filter((match) => !match.summary.finished)
-        .map((match) => ({
-          order: match.index * 1000 + groupIndex,
-          match: {
-            key: `g-${String(groupIndex)}-${String(match.index)}`,
-            label: `Grupo ${current.name} · Partido ${String(match.index + 1)}`,
-            players: [current.players[match.players[0]], current.players[match.players[1]]] as [
-              Player,
-              Player,
-            ],
-            started: match.summary.started,
-            to: 'partidos',
-          },
-        })),
-  );
-  group.sort((a, b) => a.order - b.order);
-
-  const knockoutMatches = knockout
-    ? [...knockout.rounds.flat(), ...(knockout.thirdPlace ? [knockout.thirdPlace] : [])]
-    : [];
-  const bracket: UpcomingMatch[] = knockoutMatches.flatMap((match) => {
-    const [a, b] = match.entrants;
-    if (!match.playable || match.summary.finished) return [];
-    if (a.kind !== 'player' || b.kind !== 'player') return [];
-    return [
-      {
-        key: `k-${String(match.round)}-${String(match.index)}`,
-        label:
-          match === knockout?.thirdPlace
-            ? match.roundName
-            : `${match.roundName} · ${String(match.index + 1)}`,
-        players: [a.player, b.player],
-        started: match.summary.started,
-        to: 'llaves',
-      },
-    ];
-  });
-
-  return [...group.map(({ match }) => match), ...bracket];
 }

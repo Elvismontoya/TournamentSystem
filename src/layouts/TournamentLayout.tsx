@@ -6,15 +6,12 @@ import {
   ServerCrash,
   TriangleAlert,
   X,
-  Eye,
   LayoutDashboard,
   ListOrdered,
   MapPin,
   Medal,
   Network,
-  Rocket,
   Settings,
-  Share2,
   Table2,
   User,
   Users,
@@ -123,21 +120,6 @@ export function TournamentLayout() {
                 ),
             )}
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outlined">
-            <Eye className="size-4" aria-hidden="true" />
-            Vista previa
-          </Button>
-          <Button variant="outlined">
-            <Share2 className="size-4" aria-hidden="true" />
-            Compartir
-          </Button>
-          <Button>
-            <Rocket className="size-4" aria-hidden="true" />
-            Publicar torneo
-          </Button>
         </div>
       </header>
 
