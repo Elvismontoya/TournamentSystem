@@ -29,7 +29,7 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <TopBar onCreateTournament={context.openCreateTournament} onLogin={context.openLogin} />
+      <TopBar onLogout={context.openLogin} />
 
       <main className="flex-1">
         <Outlet context={context} />

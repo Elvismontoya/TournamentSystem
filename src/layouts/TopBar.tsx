@@ -1,13 +1,13 @@
-import { LogIn, Plus, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
-import { Button } from '../components/ui/Button.tsx';
+import { UserMenu } from './UserMenu.tsx';
 
 interface TopBarProps {
-  onCreateTournament: () => void;
-  onLogin: () => void;
+  /** There are no accounts yet: logging out shows the login form. */
+  onLogout: () => void;
 }
 
-export function TopBar({ onCreateTournament, onLogin }: TopBarProps) {
+export function TopBar({ onLogout }: TopBarProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-950/90 backdrop-blur">
       <div className="page-container flex h-16 items-center gap-3">
@@ -20,7 +20,7 @@ export function TopBar({ onCreateTournament, onLogin }: TopBarProps) {
           </span>
         </Link>
 
-        <nav aria-label="Principal" className="ml-auto flex items-center gap-1 sm:gap-2">
+        <nav aria-label="Principal" className="ml-auto flex items-center gap-2 sm:gap-3">
           <NavLink
             to="/mis-torneos"
             className={({ isActive }) =>
@@ -32,16 +32,7 @@ export function TopBar({ onCreateTournament, onLogin }: TopBarProps) {
             Mis torneos
           </NavLink>
 
-          <Button variant="ghost" onClick={onLogin} className="h-9 px-3">
-            <LogIn className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Iniciar sesión</span>
-            <span className="sr-only sm:hidden">Iniciar sesión</span>
-          </Button>
-
-          <Button onClick={onCreateTournament} className="h-9 px-3 sm:px-4">
-            <Plus className="size-4" aria-hidden="true" />
-            Crear torneo
-          </Button>
+          <UserMenu onLogout={onLogout} />
         </nav>
       </div>
     </header>
