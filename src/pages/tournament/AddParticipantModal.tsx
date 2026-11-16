@@ -12,6 +12,8 @@ interface AddParticipantModalProps {
   onClose: () => void;
   /** The tournament's categories (Configuración), to choose the player's. */
   categories: string[];
+  /** Category chosen at first (the one shown in the dashboard). */
+  defaultCategory: string;
   /** Registers on the server (the Nr. is assigned there); rejects with ApiError. */
   onAdd: (entry: NewPlayer) => Promise<Player>;
 }
@@ -21,15 +23,15 @@ export function AddParticipantModal({
   open,
   onClose,
   categories,
+  defaultCategory,
   onAdd,
 }: AddParticipantModalProps) {
-  // With a single category, it is already chosen.
   const empty = {
     name: '',
     delegation: '',
     ranking: '',
     gender: '',
-    category: categories.length === 1 ? (categories[0] ?? '') : '',
+    category: defaultCategory,
   };
   const [form, setForm] = useState(empty);
   const [error, setError] = useState<string | null>(null);

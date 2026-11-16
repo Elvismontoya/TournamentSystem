@@ -123,7 +123,49 @@ export function TournamentLayout() {
         </div>
       </header>
 
-      <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:gap-8 2xl:gap-12">
+      {/* Each category plays its own competition: every section shows the chosen one. */}
+      <div
+        role="tablist"
+        aria-label="Categoría"
+        className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5"
+      >
+        <span className="px-1 font-display text-xs font-semibold tracking-wider text-neutral-500 uppercase">
+          Categoría
+        </span>
+        {tournament.categories.map((category) => {
+          const selected = category === tournament.view.category;
+          const registered = tournament.view.allPlayers.filter(
+            (player) => player.category === category,
+          ).length;
+          return (
+            <button
+              key={category}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => {
+                tournament.selectCategory(category);
+              }}
+              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 font-display text-sm font-medium transition-colors ${
+                selected
+                  ? 'bg-primary-600 text-white'
+                  : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
+              }`}
+            >
+              {category}
+              <span
+                className={`rounded-full px-1.5 text-[11px] tabular-nums ${
+                  selected ? 'bg-white/20' : 'bg-neutral-800 text-neutral-400'
+                }`}
+              >
+                {registered}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-8 2xl:gap-12">
         <nav
           aria-label="Secciones del torneo"
           className="-mx-4 flex shrink-0 gap-1 overflow-x-auto border-b border-neutral-800 px-4 pb-3 sm:-mx-6 sm:px-6 lg:sticky lg:top-24 lg:mx-0 lg:w-56 lg:flex-col 2xl:w-64 lg:self-start lg:overflow-visible lg:border-0 lg:p-0"

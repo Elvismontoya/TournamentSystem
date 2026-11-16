@@ -34,7 +34,8 @@ export interface NewPlayer {
   delegation: string;
   ranking: number | null;
   gender: Gender | null;
-  category: string | null;
+  /** One of the tournament's categories. */
+  category: string;
   /** Plays the individual event. */
   individual: boolean;
 }
@@ -305,13 +306,47 @@ export interface RankingEntry {
   reached: string;
 }
 
+/** The competition of one category (categories never mix): draw, matches, bracket, ranking. */
+export interface CategoryView {
+  /** Category name ("Sub 13"…), as in the settings. */
+  name: string;
+  /** Players registered in this category. */
+  registered: number;
+  /** Seeded players (top of the ranking, one per group), in seed order. */
+  seedIds: string[];
+  groupStage: GroupStageView | null;
+  knockout: KnockoutView | null;
+  /** Final ranking (every player who played), once the knockout is over; null before. */
+  ranking: RankingEntry[] | null;
+}
+
+/** What the API returns for a tournament: every category's competition. */
+export interface TournamentData {
+  id: string;
+  name: string;
+  settings: Settings;
+  /** Registered players of every category, highest ranking first. */
+  players: Player[];
+  /** Nr. a new player gets if none is given (unique in the whole tournament). */
+  nextBib: number;
+  /** One competition per category, in the order of the settings. */
+  categories: CategoryView[];
+}
+
+/**
+ * What the dashboard pages show: the tournament with the competition of the category chosen
+ * in the header (built from TournamentData in useTournament).
+ */
 export interface TournamentView {
   id: string;
   name: string;
   settings: Settings;
-  /** Registered players, highest ranking first. */
+  /** The category shown. */
+  category: string;
+  /** Players of this category, highest ranking first. */
   players: Player[];
-  /** Nr. a new player gets if none is given. */
+  /** Players of every category (e.g. to check a Nr. is free). */
+  allPlayers: Player[];
   nextBib: number;
   /** Seeded players (top of the ranking, one per group), in seed order. */
   seedIds: string[];
@@ -320,6 +355,20 @@ export interface TournamentView {
   /** Final ranking (every player who played), once the knockout is over; null before. */
   ranking: RankingEntry[] | null;
 }
+
+/** A category found in an import file and where its players go. */
+export interface FileCategory {
+  /** As written in the file ("" when the cell is empty). */
+  name: string;
+  count: number;
+  /** Tournament category its players go to; null = not imported (or not assigned yet). */
+  target: string | null;
+  /** False while it isn't assigned (the import can't go on). */
+  assigned: boolean;
+}
+
+/** File category → tournament category, or null = don't import. */
+export type CategoryMap = Partial<Record<string, string | null>>;
 
 export interface DrawPreview {
   groupSize: number;
@@ -337,4 +386,8 @@ export interface ImportPreview {
   errors: string[];
   /** Rows without an X in IND (other modalities only): not imported for now. */
   skipped: number;
+  /** Players of file categories marked "No importar". */
+  skippedByCategory: number;
+  /** Categories found in the file and where each goes. */
+  fileCategories: FileCategory[];
 }

@@ -42,8 +42,6 @@ type OpenModal =
   | { kind: 'remove'; player: Player }
   | null;
 
-const ALL_CATEGORIES = 'Todas las categorías';
-
 export function ParticipantsPage() {
   const {
     view,
@@ -54,12 +52,11 @@ export function ParticipantsPage() {
     previewImport,
     importPlayers,
   } = useOutletContext<Tournament>();
-  const { players, seedIds, groupStage, knockout, settings } = view;
+  const { players, seedIds, groupStage, knockout, settings, category } = view;
   // The top players by ranking head one group each (decided by the server).
   const SEEDS = seedIds.length;
   const [openModal, setOpenModal] = useState<OpenModal>(null);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState(ALL_CATEGORIES);
   const closeModal = () => {
     setOpenModal(null);
   };
@@ -69,17 +66,7 @@ export function ParticipantsPage() {
     groupStage?.groups.find((group) => group.players.some((member) => member.id === player.id))
       ?.name ?? null;
 
-  // Categories present among the players (for the filter): the tournament's first.
-  const presentCategories = [
-    ...new Set([
-      ...settings.categories.filter((name) => players.some((player) => player.category === name)),
-      ...players.map((player) => player.category).filter((name) => name !== null),
-    ]),
-  ];
-  const visiblePlayers = players.filter(
-    (player) =>
-      matchesPlayer(player, query) && (category === ALL_CATEGORIES || player.category === category),
-  );
+  const visiblePlayers = players.filter((player) => matchesPlayer(player, query));
 
   const registered = players.length;
   // Registered after the group draw: they wait in "Sin grupo" until placed.
@@ -89,11 +76,11 @@ export function ParticipantsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Participantes"
-        text={`Individual · ${String(registered)} ${registered === 1 ? 'jugador inscrito' : 'jugadores inscritos'}.`}
+        text={`${category} · individual · ${String(registered)} ${registered === 1 ? 'jugador inscrito' : 'jugadores inscritos'}.`}
       >
         <button
           type="button"
-          disabled={registered === 0}
+          disabled={view.allPlayers.length === 0}
           onClick={() => {
             setOpenModal('removeAll');
           }}
@@ -142,23 +129,6 @@ export function ParticipantsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-neutral-400">Ordenados por ranking</p>
         <div className="flex w-full flex-wrap gap-3 sm:w-auto">
-          {presentCategories.length > 1 && (
-            <label className="block w-full sm:w-52">
-              <span className="sr-only">Categoría</span>
-              <select
-                value={category}
-                onChange={(event) => {
-                  setCategory(event.target.value);
-                }}
-                className="h-10 w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 text-sm text-neutral-100 focus:border-primary-500 focus:outline-none"
-              >
-                <option>{ALL_CATEGORIES}</option>
-                {presentCategories.map((name) => (
-                  <option key={name}>{name}</option>
-                ))}
-              </select>
-            </label>
-          )}
           <label className="relative block w-full sm:w-72">
             <span className="sr-only">Buscar jugador</span>
             <Search
@@ -204,9 +174,6 @@ export function ParticipantsPage() {
                   Gén.
                 </abbr>
               </th>
-              <th scope="col" className="hidden px-3 py-3 font-medium lg:table-cell">
-                Categoría
-              </th>
               <th scope="col" className="px-3 py-3 text-right font-medium">
                 Ranking
               </th>
@@ -218,7 +185,7 @@ export function ParticipantsPage() {
           <tbody className="divide-y divide-neutral-800">
             {visiblePlayers.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-5 py-8 text-center text-sm text-neutral-400">
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-neutral-400">
                   {players.length === 0
                     ? 'Todavía no hay jugadores inscritos.'
                     : 'Ningún jugador coincide con la búsqueda.'}
@@ -254,7 +221,7 @@ export function ParticipantsPage() {
                       <div className="min-w-0">
                         <p className="truncate font-medium text-white">{player.name}</p>
                         <p className="truncate text-xs text-neutral-500 md:hidden">
-                          {[player.delegation, player.category].filter(Boolean).join(' · ')}
+                          {player.delegation}
                         </p>
                       </div>
                     </div>
@@ -264,9 +231,6 @@ export function ParticipantsPage() {
                   </td>
                   <td className="hidden px-3 py-3 text-neutral-300 sm:table-cell">
                     {player.gender ?? <span className="text-neutral-600">—</span>}
-                  </td>
-                  <td className="hidden px-3 py-3 text-neutral-300 lg:table-cell">
-                    {player.category ?? <span className="text-neutral-600">—</span>}
                   </td>
                   <td className="px-2 py-3 text-right font-display text-neutral-100 tabular-nums sm:px-3">
                     {player.ranking ?? <span className="text-neutral-600">—</span>}
@@ -316,13 +280,14 @@ export function ParticipantsPage() {
           open
           onClose={closeModal}
           categories={settings.categories}
+          defaultCategory={category}
           onAdd={addPlayer}
         />
       )}
       {typeof openModal === 'object' && openModal?.kind === 'edit' && (
         <EditParticipantModal
           player={openModal.player}
-          players={players}
+          players={view.allPlayers}
           categories={settings.categories}
           onClose={closeModal}
           onSave={updatePlayer}
@@ -340,13 +305,15 @@ export function ParticipantsPage() {
         <ImportParticipantsModal
           open
           onClose={closeModal}
+          categories={settings.categories}
           onPreview={previewImport}
           onImport={importPlayers}
         />
       )}
       {openModal === 'removeAll' && (
         <RemoveAllParticipantsModal
-          registered={registered}
+          registered={view.allPlayers.length}
+          categories={settings.categories.length}
           drawn={groupStage !== null}
           hasResults={Boolean(groupStage?.hasResults) || Boolean(knockout?.hasResults)}
           onClose={closeModal}

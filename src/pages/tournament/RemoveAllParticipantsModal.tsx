@@ -5,7 +5,10 @@ import { Modal } from '../../components/Modal.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 
 interface RemoveAllParticipantsModalProps {
+  /** Players of every category. */
   registered: number;
+  /** How many categories the tournament has. */
+  categories: number;
   /** Groups are drawn: the draw (and the bracket) is removed too. */
   drawn: boolean;
   /** Results entered: nobody can be removed in bulk. */
@@ -18,6 +21,7 @@ interface RemoveAllParticipantsModalProps {
 /** Confirms removing every registered player (e.g. to import a corrected list). */
 export function RemoveAllParticipantsModal({
   registered,
+  categories,
   drawn,
   hasResults,
   onClose,
@@ -65,8 +69,8 @@ export function RemoveAllParticipantsModal({
       }}
       title="¿Eliminar a todos los jugadores?"
       description={`Se eliminan los ${String(registered)} inscritos${
-        drawn ? ', el sorteo de grupos y las llaves' : ''
-      }. No se puede deshacer.`}
+        categories > 1 ? ' de todas las categorías' : ''
+      }${drawn ? ', los sorteos de grupos y las llaves' : ''}. No se puede deshacer.`}
     >
       {error && (
         <p role="alert" className="mb-4 text-sm text-red-300">

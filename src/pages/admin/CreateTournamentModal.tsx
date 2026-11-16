@@ -12,7 +12,7 @@ import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../../api/client.ts';
 import { tournamentsApi } from '../../api/tournaments.ts';
-import type { Settings, TournamentSummary, TournamentView } from '../../api/types.ts';
+import type { Settings, TournamentSummary, TournamentData } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { RequiredMark } from '../../components/ui/form.tsx';
@@ -172,7 +172,7 @@ function ModeChoice({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => 
 }
 
 /** What will be copied from the chosen tournament, in short. */
-function CopiedRulesSummary({ source }: { source: TournamentView }) {
+function CopiedRulesSummary({ source }: { source: TournamentData }) {
   const settings: Settings = source.settings;
   const rows: [string, string][] = [
     ['Deporte y formato', `${settings.sport} · ${settings.format}`],
@@ -219,7 +219,7 @@ export function CreateTournamentModal({ open, onClose }: { open: boolean; onClos
   const [mode, setMode] = useState<Mode>('scratch');
   const [values, setValues] = useState<SettingsFormValues>(newTournamentValues);
   const [sources, setSources] = useState<SourceList>({ status: 'idle' });
-  const [source, setSource] = useState<TournamentView | null>(null);
+  const [source, setSource] = useState<TournamentData | null>(null);
   const [loadingSource, setLoadingSource] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

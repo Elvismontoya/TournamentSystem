@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError } from '../../api/client.ts';
-import type { ImportPreview } from '../../api/types.ts';
+import type { CategoryMap, ImportPreview } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { PLAYER_FILE_ACCEPT, readPlayerFile } from '../../features/participants/readPlayerFile.ts';
@@ -16,10 +16,12 @@ import { PLAYER_FILE_ACCEPT, readPlayerFile } from '../../features/participants/
 interface ImportParticipantsModalProps {
   open: boolean;
   onClose: () => void;
+  /** The tournament's categories: where each category of the file can go. */
+  categories: string[];
   /** Asks the server how it reads the rows (without importing). */
-  onPreview: (rows: string[][]) => Promise<ImportPreview>;
+  onPreview: (rows: string[][], categoryMap: CategoryMap) => Promise<ImportPreview>;
   /** Imports on the server; rejects with ApiError (one detail per problem). */
-  onImport: (rows: string[][]) => Promise<void>;
+  onImport: (rows: string[][], categoryMap: CategoryMap) => Promise<void>;
 }
 
 /** Columns of the federation's spreadsheet (the template). */
@@ -38,7 +40,7 @@ async function downloadTemplate() {
   XLSX.writeFile(book, 'plantilla-jugadores.xlsx');
 }
 
-/** "Por categoría: Sub 19: 30 · JUVENIL: 12" from the preview. */
+/** "Sub 19: 30 · Sub 16: 12" (players to import, by tournament category). */
 function categoriesOf({ players }: ImportPreview): string {
   const counts = new Map<string, number>();
   for (const player of players) {
@@ -48,35 +50,36 @@ function categoriesOf({ players }: ImportPreview): string {
   return [...counts].map(([name, count]) => `${name}: ${String(count)}`).join(' · ');
 }
 
+/** Value of the "don't import" option in the category selects. */
+const SKIP = '__skip__';
+
 /**
  * Registers many players at once from an Excel or CSV file (no manual editing), with the
  * federation's columns: number, name, league, gender, RK_POINTS and category, found by their
- * header in any order. For now only the individual event: rows without an X in IND are
- * skipped and DB, DX and TEAM are ignored.
+ * header in any order. Each category of the file goes to one of the tournament's categories
+ * (or isn't imported): categories never mix. For now only the individual event: rows without
+ * an X in IND are skipped and DB, DX and TEAM are ignored.
  */
 export function ImportParticipantsModal({
   open,
   onClose,
+  categories,
   onPreview,
   onImport,
 }: ImportParticipantsModalProps) {
   const [rows, setRows] = useState<string[][] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [categoryMap, setCategoryMap] = useState<CategoryMap>({});
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [reading, setReading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
-  const choose = async (file: File) => {
-    setFileName(file.name);
-    setImportError(null);
-    setPreview(null);
-    setRows(null);
+  const read = async (next: string[][], map: CategoryMap) => {
     setReading(true);
+    setImportError(null);
     try {
-      const read = await readPlayerFile(file);
-      setRows(read);
-      setPreview(await onPreview(read));
+      setPreview(await onPreview(next, map));
     } catch (failure) {
       setImportError(failure instanceof Error ? failure.message : 'No se pudo leer el archivo.');
     } finally {
@@ -84,10 +87,41 @@ export function ImportParticipantsModal({
     }
   };
 
+  const choose = async (file: File) => {
+    setFileName(file.name);
+    setPreview(null);
+    setRows(null);
+    setCategoryMap({});
+    setImportError(null);
+    setReading(true);
+    try {
+      const fileRows = await readPlayerFile(file);
+      setRows(fileRows);
+      await read(fileRows, {});
+    } catch (failure) {
+      setImportError(failure instanceof Error ? failure.message : 'No se pudo leer el archivo.');
+      setReading(false);
+    }
+  };
+
+  /** Where a category of the file goes ("" = not chosen yet). */
+  const assign = (fileCategory: string, value: string) => {
+    if (!rows) return;
+    const next: CategoryMap = Object.fromEntries(
+      Object.entries(categoryMap).filter(([name]) => name !== fileCategory),
+    );
+    if (value !== '') next[fileCategory] = value === SKIP ? null : value;
+    setCategoryMap(next);
+    void read(rows, next);
+  };
+
   const players = preview?.players ?? [];
   const errors = preview?.errors ?? [];
-  const canImport = rows !== null && players.length > 0 && errors.length === 0 && !importing;
-
+  const fileCategories = preview?.fileCategories ?? [];
+  // Unassigned categories are solved with the selects above, not in the file.
+  const fileErrors = errors.filter((error) => !error.startsWith('Elige a qué categoría'));
+  const canImport =
+    rows !== null && players.length > 0 && errors.length === 0 && !importing && !reading;
   return (
     <Modal
       open={open}
@@ -102,7 +136,7 @@ export function ImportParticipantsModal({
           if (!canImport) return;
           setImporting(true);
           setImportError(null);
-          onImport(rows).then(onClose, (failure: unknown) => {
+          onImport(rows, categoryMap).then(onClose, (failure: unknown) => {
             setImporting(false);
             setImportError(failure instanceof ApiError ? failure.message : 'No se pudo importar.');
           });
@@ -154,6 +188,63 @@ export function ImportParticipantsModal({
           </p>
         </div>
 
+        {fileCategories.length > 0 && (
+          <fieldset className="rounded-xl border border-primary-500/30 bg-primary-500/5 px-4 py-3">
+            <legend className="px-1 font-display text-sm font-medium text-neutral-200">
+              Categorías del archivo
+            </legend>
+            <p className="text-xs text-neutral-400">
+              Cada categoría juega aparte: elige a cuál del torneo va cada una (o «No importar»).
+            </p>
+            <ul className="mt-3 flex flex-col gap-2">
+              {fileCategories.map((entry) => {
+                const id = `import-category-${entry.name || 'none'}`;
+                const value = !entry.assigned ? '' : (entry.target ?? SKIP);
+                return (
+                  <li key={entry.name} className="grid items-center gap-2 sm:grid-cols-[1fr_14rem]">
+                    <label htmlFor={id} className="text-sm text-neutral-200">
+                      <strong className="font-medium">{entry.name || 'Sin categoría'}</strong>{' '}
+                      <span className="text-neutral-500">
+                        ({entry.count} {entry.count === 1 ? 'jugador' : 'jugadores'})
+                      </span>
+                    </label>
+                    <select
+                      id={id}
+                      value={value}
+                      disabled={reading}
+                      onChange={(event) => {
+                        assign(entry.name, event.target.value);
+                      }}
+                      className={`h-9 w-full rounded-lg border bg-neutral-850 px-2 text-sm text-neutral-100 focus:border-primary-500 focus:outline-none ${
+                        entry.assigned ? 'border-neutral-700' : 'border-tertiary-500/60'
+                      }`}
+                    >
+                      <option value="" disabled>
+                        Elegir categoría…
+                      </option>
+                      {categories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                      <option value={SKIP}>No importar</option>
+                    </select>
+                  </li>
+                );
+              })}
+            </ul>
+            {preview && preview.skippedByCategory > 0 && (
+              <p className="mt-2 text-xs text-neutral-500">
+                {preview.skippedByCategory}{' '}
+                {preview.skippedByCategory === 1
+                  ? 'jugador no se importa'
+                  : 'jugadores no se importan'}{' '}
+                (categorías marcadas «No importar»).
+              </p>
+            )}
+          </fieldset>
+        )}
+
         {preview && players.length > 0 && errors.length === 0 && (
           <div
             role="status"
@@ -178,11 +269,11 @@ export function ImportParticipantsModal({
           </p>
         )}
 
-        {errors.length > 0 && (
+        {fileErrors.length > 0 && (
           <div className="rounded-xl border border-tertiary-500/40 bg-tertiary-500/10 px-4 py-3 text-sm text-tertiary-200">
             <p className="font-medium">Corrige esto en el archivo y vuelve a elegirlo:</p>
             <ul className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto">
-              {errors.map((error) => (
+              {fileErrors.map((error) => (
                 <li key={error} className="flex items-start gap-2">
                   <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   {error}

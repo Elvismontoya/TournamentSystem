@@ -82,7 +82,10 @@ export function newTournamentValues(): SettingsFormValues {
 }
 
 /** Current values of a tournament, for Configuración. */
-export function formValuesOf({ name, settings }: TournamentView): SettingsFormValues {
+export function formValuesOf({
+  name,
+  settings,
+}: Pick<TournamentView, 'name' | 'settings'>): SettingsFormValues {
   return {
     name,
     sport: settings.sport,
@@ -113,7 +116,7 @@ export function formValuesOf({ name, settings }: TournamentView): SettingsFormVa
  */
 export function withCopiedRules(
   general: SettingsFormValues,
-  source: TournamentView,
+  source: Pick<TournamentView, 'name' | 'settings'>,
 ): SettingsFormValues {
   return {
     ...formValuesOf(source),

@@ -3,6 +3,8 @@ import { ApiError } from '../../api/client.ts';
 import { tournamentsApi } from '../../api/tournaments.ts';
 import type {
   BracketSlot,
+  CategoryMap,
+  CategoryView,
   DrawPreview,
   ImportPreview,
   KnockoutMatchView,
@@ -11,12 +13,20 @@ import type {
   Player,
   PlayerUpdate,
   SettingsUpdate,
+  TournamentData,
   TournamentView,
 } from '../../api/types.ts';
 
-/** Tournament shared by every section (Outlet context): the API's view plus its actions. */
+/**
+ * Tournament shared by every section (Outlet context): the view of the category chosen in
+ * the header, plus the actions. Groups, matches and bracket actions apply to that category.
+ */
 export interface Tournament {
   view: TournamentView;
+  /** Every category of the tournament (each one is its own competition). */
+  categories: string[];
+  /** Shows another category in every section. */
+  selectCategory: (category: string) => void;
   /** Message of the last action that failed (shown in a banner), or null. */
   actionError: string | null;
   dismissActionError: () => void;
@@ -30,11 +40,11 @@ export interface Tournament {
   updatePlayer: (playerId: string, entry: PlayerUpdate) => Promise<void>;
   /** Throws ApiError (e.g. the player is in a group). */
   removePlayer: (playerId: string) => Promise<void>;
-  /** Removes every player and the draw. Throws ApiError (e.g. results entered). */
+  /** Removes every player (every category) and the draws. Throws ApiError. */
   removeAllPlayers: () => Promise<void>;
-  previewImport: (rows: string[][]) => Promise<ImportPreview>;
-  /** Throws ApiError (with one detail per invalid line). */
-  importPlayers: (rows: string[][]) => Promise<void>;
+  previewImport: (rows: string[][], categoryMap: CategoryMap) => Promise<ImportPreview>;
+  /** Throws ApiError (with one detail per problem). */
+  importPlayers: (rows: string[][], categoryMap: CategoryMap) => Promise<void>;
   previewDraw: (groupSize: number) => Promise<DrawPreview>;
   drawGroups: (groupSize: number) => Promise<void>;
   setGroupPlayers: (groupIndex: number, playerIds: string[]) => Promise<void>;
@@ -66,23 +76,77 @@ export interface Tournament {
   setKnockoutWalkover: (round: number, matchIndex: number, absent: 0 | 1 | null) => void;
 }
 
+const EMPTY_CATEGORY: Omit<CategoryView, 'name'> = {
+  registered: 0,
+  seedIds: [],
+  groupStage: null,
+  knockout: null,
+  ranking: null,
+};
+
+/** The view the pages show: the tournament with the competition of one category. */
+function viewOf(data: TournamentData, category: string): TournamentView {
+  const competition = data.categories.find((entry) => entry.name === category) ?? EMPTY_CATEGORY;
+  return {
+    id: data.id,
+    name: data.name,
+    settings: data.settings,
+    category,
+    players: data.players.filter((player) => player.category === category),
+    allPlayers: data.players,
+    nextBib: data.nextBib,
+    seedIds: competition.seedIds,
+    groupStage: competition.groupStage,
+    knockout: competition.knockout,
+    ranking: competition.ranking,
+  };
+}
+
+/** Applies `change` to one category's competition (for instant local updates). */
+function onCategory(
+  data: TournamentData,
+  category: string,
+  change: (competition: CategoryView) => CategoryView,
+): TournamentData {
+  return {
+    ...data,
+    categories: data.categories.map((entry) => (entry.name === category ? change(entry) : entry)),
+  };
+}
+
 /** One side of a final score changed (sets only), so typing feels instant. */
 function withScore(result: MatchResult, side: 0 | 1, value: number | null): MatchResult {
   const score = result.score ?? [null, null];
   return { ...result, score: side === 0 ? [value, score[1]] : [score[0], value] };
 }
 
-/** Applies `change` to one group match of the view. */
+/** One set's score changed, so typing feels instant while the request is on its way. */
+function withSetScore(
+  result: MatchResult,
+  setIndex: number,
+  side: 0 | 1,
+  value: number | null,
+): MatchResult {
+  return {
+    ...result,
+    sets: result.sets.map((set, index) => {
+      if (index !== setIndex) return set;
+      return side === 0 ? [value, set[1]] : [set[0], value];
+    }),
+  };
+}
+
+/** Applies `change` to one group match of a category. */
 function withGroupMatch(
-  view: TournamentView,
+  competition: CategoryView,
   groupIndex: number,
   matchIndex: number,
   change: (result: MatchResult) => MatchResult,
-): TournamentView {
-  const { groupStage } = view;
-  if (!groupStage) return view;
+): CategoryView {
+  const { groupStage } = competition;
+  if (!groupStage) return competition;
   return {
-    ...view,
+    ...competition,
     groupStage: {
       ...groupStage,
       groups: groupStage.groups.map((group, gi) =>
@@ -99,21 +163,21 @@ function withGroupMatch(
   };
 }
 
-/** Applies `change` to one knockout match of the view (match 1 of the last round = 3rd place). */
+/** Applies `change` to one knockout match (match 1 of the last round = 3rd place). */
 function withKnockoutMatch(
-  view: TournamentView,
+  competition: CategoryView,
   round: number,
   matchIndex: number,
   change: (result: MatchResult) => MatchResult,
-): TournamentView {
-  const { knockout } = view;
-  if (!knockout) return view;
+): CategoryView {
+  const { knockout } = competition;
+  if (!knockout) return competition;
   const update = (match: KnockoutMatchView) => ({ ...match, result: change(match.result) });
   if (knockout.thirdPlace && round === knockout.rounds.length - 1 && matchIndex === 1) {
-    return { ...view, knockout: { ...knockout, thirdPlace: update(knockout.thirdPlace) } };
+    return { ...competition, knockout: { ...knockout, thirdPlace: update(knockout.thirdPlace) } };
   }
   return {
-    ...view,
+    ...competition,
     knockout: {
       ...knockout,
       rounds: knockout.rounds.map((matches, ri) =>
@@ -133,94 +197,14 @@ export type TournamentState =
 const messageOf = (error: unknown) =>
   error instanceof ApiError ? error.message : 'Ocurrió un error inesperado.';
 
-function setScore(
-  sets: MatchResult['sets'],
-  setIndex: number,
-  side: 0 | 1,
-  value: number | null,
-): MatchResult['sets'] {
-  return sets.map((set, index) => {
-    if (index !== setIndex) return set;
-    return side === 0 ? [value, set[1]] : [set[0], value];
-  });
-}
-
-/** Same as withSet, for a knockout match. */
-function withKnockoutSet(
-  view: TournamentView,
-  round: number,
-  matchIndex: number,
-  setIndex: number,
-  side: 0 | 1,
-  value: number | null,
-): TournamentView {
-  const { knockout } = view;
-  if (!knockout) return view;
-  const withScore = (match: KnockoutMatchView): KnockoutMatchView => ({
-    ...match,
-    result: { ...match.result, sets: setScore(match.result.sets, setIndex, side, value) },
-  });
-  // The match for 3rd place is match 1 of the final's round.
-  if (knockout.thirdPlace && round === knockout.rounds.length - 1 && matchIndex === 1) {
-    return { ...view, knockout: { ...knockout, thirdPlace: withScore(knockout.thirdPlace) } };
-  }
-  return {
-    ...view,
-    knockout: {
-      ...knockout,
-      rounds: knockout.rounds.map((matches, ri) =>
-        ri !== round
-          ? matches
-          : matches.map((match, mi) => (mi !== matchIndex ? match : withScore(match))),
-      ),
-    },
-  };
-}
-
-/** Sets one score locally, so typing feels instant while the request is on its way. */
-function withSet(
-  view: TournamentView,
-  groupIndex: number,
-  matchIndex: number,
-  setIndex: number,
-  side: 0 | 1,
-  value: number | null,
-): TournamentView {
-  const { groupStage } = view;
-  if (!groupStage) return view;
-  return {
-    ...view,
-    groupStage: {
-      ...groupStage,
-      groups: groupStage.groups.map((group, gi) =>
-        gi !== groupIndex
-          ? group
-          : {
-              ...group,
-              matches: group.matches.map((match, mi) =>
-                mi !== matchIndex
-                  ? match
-                  : {
-                      ...match,
-                      result: {
-                        ...match.result,
-                        sets: setScore(match.result.sets, setIndex, side, value),
-                      },
-                    },
-              ),
-            },
-      ),
-    },
-  };
-}
-
 /**
  * Loads a tournament from the API and exposes its actions. Changes are sent one after
- * another (in order); the screen takes the server's view once nothing is pending, so fast
+ * another (in order); the screen takes the server's data once nothing is pending, so fast
  * typing in the score boxes never jumps back.
  */
 export function useTournament(tournamentId: string): TournamentState {
-  const [view, setView] = useState<TournamentView | null>(null);
+  const [data, setData] = useState<TournamentData | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -232,7 +216,7 @@ export function useTournament(tournamentId: string): TournamentState {
     tournamentsApi.get(tournamentId).then(
       (loaded) => {
         if (!active) return;
-        setView(loaded);
+        setData(loaded);
         setLoadError(null);
       },
       (error: unknown) => {
@@ -247,22 +231,22 @@ export function useTournament(tournamentId: string): TournamentState {
   /** Runs a change after the previous ones; applies the result when nothing else is pending. */
   const mutate = useCallback(
     async (
-      run: () => Promise<TournamentView>,
-      optimistic?: (current: TournamentView) => TournamentView,
+      run: () => Promise<TournamentData>,
+      optimistic?: (current: TournamentData) => TournamentData,
     ): Promise<void> => {
-      if (optimistic) setView((current) => current && optimistic(current));
+      if (optimistic) setData((current) => current && optimistic(current));
       pending.current++;
       const task = queue.current.then(run);
       queue.current = task.catch(() => undefined);
       try {
         const next = await task;
         pending.current--;
-        if (pending.current === 0) setView(next);
+        if (pending.current === 0) setData(next);
       } catch (error) {
         pending.current--;
         // Resync with the server (an optimistic change may not have been saved).
         if (pending.current === 0) {
-          tournamentsApi.get(tournamentId).then(setView, () => undefined);
+          tournamentsApi.get(tournamentId).then(setData, () => undefined);
         }
         throw error;
       }
@@ -282,7 +266,7 @@ export function useTournament(tournamentId: string): TournamentState {
     );
   }, []);
 
-  if (loadError && !view) {
+  if (loadError && !data) {
     return {
       status: 'error',
       message: loadError,
@@ -292,13 +276,23 @@ export function useTournament(tournamentId: string): TournamentState {
       },
     };
   }
-  if (!view) return { status: 'loading' };
+  if (!data) return { status: 'loading' };
 
   const id = tournamentId;
+  const categories = data.settings.categories;
+  // The chosen category, or the first one (also when the chosen one was taken out).
+  const category =
+    chosen !== null && categories.includes(chosen) ? chosen : (categories.at(0) ?? '');
+  const local =
+    (change: (competition: CategoryView) => CategoryView) => (current: TournamentData) =>
+      onCategory(current, category, change);
+
   return {
     status: 'ready',
     tournament: {
-      view,
+      view: viewOf(data, category),
+      categories,
+      selectCategory: setChosen,
       actionError,
       dismissActionError: () => {
         setActionError(null);
@@ -321,62 +315,86 @@ export function useTournament(tournamentId: string): TournamentState {
         mutate(() => tournamentsApi.updatePlayer(id, playerId, entry)),
       removePlayer: (playerId) => mutate(() => tournamentsApi.removePlayer(id, playerId)),
       removeAllPlayers: () => mutate(() => tournamentsApi.removeAllPlayers(id)),
-      previewImport: (rows) => tournamentsApi.previewImport(id, rows),
-      importPlayers: (rows) =>
-        mutate(async () => (await tournamentsApi.importPlayers(id, rows)).view),
-      previewDraw: (groupSize) => tournamentsApi.previewDraw(id, groupSize),
-      drawGroups: (groupSize) => mutate(() => tournamentsApi.drawGroups(id, groupSize)),
+      previewImport: (rows, categoryMap) => tournamentsApi.previewImport(id, rows, categoryMap),
+      importPlayers: (rows, categoryMap) =>
+        mutate(async () => (await tournamentsApi.importPlayers(id, rows, categoryMap)).view),
+      previewDraw: (groupSize) => tournamentsApi.previewDraw(id, category, groupSize),
+      drawGroups: (groupSize) => mutate(() => tournamentsApi.drawGroups(id, category, groupSize)),
       setGroupPlayers: (groupIndex, playerIds) =>
-        mutate(() => tournamentsApi.setGroupPlayers(id, groupIndex, playerIds)),
+        mutate(() => tournamentsApi.setGroupPlayers(id, category, groupIndex, playerIds)),
       updateSet: (groupIndex, matchIndex, setIndex, side, value) => {
         fire(
           mutate(
-            () => tournamentsApi.updateSet(id, groupIndex, matchIndex, setIndex, side, value),
-            (current) => withSet(current, groupIndex, matchIndex, setIndex, side, value),
+            () =>
+              tournamentsApi.updateSet(id, category, groupIndex, matchIndex, setIndex, side, value),
+            local((competition) =>
+              withGroupMatch(competition, groupIndex, matchIndex, (result) =>
+                withSetScore(result, setIndex, side, value),
+              ),
+            ),
           ),
         );
       },
       updateScore: (groupIndex, matchIndex, side, value) => {
         fire(
           mutate(
-            () => tournamentsApi.updateScore(id, groupIndex, matchIndex, side, value),
-            (current) =>
-              withGroupMatch(current, groupIndex, matchIndex, (result) =>
+            () => tournamentsApi.updateScore(id, category, groupIndex, matchIndex, side, value),
+            local((competition) =>
+              withGroupMatch(competition, groupIndex, matchIndex, (result) =>
                 withScore(result, side, value),
               ),
+            ),
           ),
         );
       },
       setWalkover: (groupIndex, matchIndex, absent) => {
-        fire(mutate(() => tournamentsApi.setWalkover(id, groupIndex, matchIndex, absent)));
+        fire(
+          mutate(() => tournamentsApi.setWalkover(id, category, groupIndex, matchIndex, absent)),
+        );
       },
       drawKnockout: () => {
-        fire(mutate(() => tournamentsApi.drawKnockout(id)));
+        fire(mutate(() => tournamentsApi.drawKnockout(id, category)));
       },
       moveKnockoutSlot: (position, slot) => {
-        fire(mutate(() => tournamentsApi.moveKnockoutSlot(id, position, slot)));
+        fire(mutate(() => tournamentsApi.moveKnockoutSlot(id, category, position, slot)));
       },
       updateKnockoutSet: (round, matchIndex, setIndex, side, value) => {
         fire(
           mutate(
-            () => tournamentsApi.updateKnockoutSet(id, round, matchIndex, setIndex, side, value),
-            (current) => withKnockoutSet(current, round, matchIndex, setIndex, side, value),
+            () =>
+              tournamentsApi.updateKnockoutSet(
+                id,
+                category,
+                round,
+                matchIndex,
+                setIndex,
+                side,
+                value,
+              ),
+            local((competition) =>
+              withKnockoutMatch(competition, round, matchIndex, (result) =>
+                withSetScore(result, setIndex, side, value),
+              ),
+            ),
           ),
         );
       },
       updateKnockoutScore: (round, matchIndex, side, value) => {
         fire(
           mutate(
-            () => tournamentsApi.updateKnockoutScore(id, round, matchIndex, side, value),
-            (current) =>
-              withKnockoutMatch(current, round, matchIndex, (result) =>
+            () => tournamentsApi.updateKnockoutScore(id, category, round, matchIndex, side, value),
+            local((competition) =>
+              withKnockoutMatch(competition, round, matchIndex, (result) =>
                 withScore(result, side, value),
               ),
+            ),
           ),
         );
       },
       setKnockoutWalkover: (round, matchIndex, absent) => {
-        fire(mutate(() => tournamentsApi.setKnockoutWalkover(id, round, matchIndex, absent)));
+        fire(
+          mutate(() => tournamentsApi.setKnockoutWalkover(id, category, round, matchIndex, absent)),
+        );
       },
     },
   };
