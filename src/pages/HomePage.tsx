@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  Check,
   ChevronDown,
   CircleDot,
   Goal,
@@ -28,8 +27,14 @@ import type { AppLayoutContext } from '../layouts/AppLayout.tsx';
 // Mockup: informative landing page. The platform is for any sport; the examples
 // (hero preview, sample texts) use table tennis. All content is fixed marketing text.
 
-const SPORTS: { name: string; icon: LucideIcon; detail: string }[] = [
-  { name: 'Tenis de mesa', icon: Table2, detail: 'Sets al mejor de 5 o 7, singles y dobles' },
+// For now only table tennis (individual) is available; the other sports are shown dimmed.
+const SPORTS: { name: string; icon: LucideIcon; detail: string; available?: boolean }[] = [
+  {
+    name: 'Tenis de mesa',
+    icon: Table2,
+    detail: 'Individual · grupos y llaves, al mejor de 3, 5 o 7 sets',
+    available: true,
+  },
   { name: 'Fútbol', icon: Goal, detail: 'Empates y tabla 3 / 1 / 0' },
   { name: 'Baloncesto', icon: CircleDot, detail: 'Puntos por cuarto y prórroga' },
   { name: 'Voleibol', icon: Volleyball, detail: 'Sets con puntuación 3/0 y 2/1' },
@@ -101,22 +106,31 @@ const FORMATS: { name: string; text: string; icon: LucideIcon; soon?: boolean }[
   },
 ];
 
+// Answers describe what the platform does today: table tennis, individual category.
 const FAQS = [
   {
     q: '¿Qué deportes puedo organizar?',
-    a: 'Cualquiera: tenis de mesa, fútbol, baloncesto, voleibol, pádel y más. Cada deporte trae su propia forma de puntuar.',
+    a: 'Por ahora, tenis de mesa. Fútbol, baloncesto, voleibol y otros deportes llegarán más adelante, cada uno con su propia forma de puntuar.',
   },
   {
-    q: '¿Sirve para jugadores individuales, dobles o equipos?',
-    a: 'Sí. Por ejemplo, en tenis de mesa puedes crear torneos individuales, de dobles (incluidos mixtos) o por equipos.',
+    q: '¿Qué categorías puedo crear?',
+    a: 'Por ahora, torneos individuales (un jugador contra otro). Dobles y equipos llegarán más adelante.',
+  },
+  {
+    q: '¿Cómo se arman los grupos?',
+    a: 'Los mejores del ranking encabezan un grupo cada uno y el resto se reparte al azar, separando a los jugadores de la misma delegación siempre que se pueda. Los grupos son de 3 a 6 jugadores.',
   },
   {
     q: '¿Cómo se calculan las tablas?',
-    a: 'Según las reglas de cada deporte. En tenis de mesa: 2 puntos por victoria y 1 por derrota, con desempate por enfrentamiento directo, sets y puntos. En fútbol: 3 / 1 / 0.',
+    a: 'Por defecto, 2 puntos por victoria, 1 por derrota y 0 si no se presenta (W.O.); se puede cambiar en la configuración. Si hay empate, cuentan solo los partidos entre los empatados: primero los puntos, luego el cociente de sets y luego el de puntos. Si siguen empatados, se sortea.',
   },
   {
-    q: '¿Los espectadores necesitan una cuenta?',
-    a: 'No. Cualquiera con el enlace puede ver los grupos, las llaves y los resultados en vivo.',
+    q: '¿Cómo funcionan las llaves?',
+    a: 'Pasan el 1.º y el 2.º de cada grupo. Los primeros son cabezas de serie y cada 2.º va a la mitad contraria de su 1.º, así que solo podrían volver a cruzarse en la final. El ganador de cada partido avanza solo y puedes elegir si se juega el partido por el 3.er puesto.',
+  },
+  {
+    q: '¿Los partidos son al mejor de cuántos sets?',
+    a: 'Tú lo eliges: al mejor de 1, 3, 5, 7 o 9 sets, por separado para los grupos y para las llaves. Los sets son a 11 puntos con 2 de diferencia, y también se puede cambiar.',
   },
 ];
 
@@ -277,14 +291,36 @@ export function HomePage() {
       {/* Sports */}
       <section aria-label="Deportes" className="border-b border-neutral-800 bg-neutral-900/50">
         <ul className="page-container grid grid-cols-2 gap-px lg:grid-cols-4">
-          {SPORTS.map(({ name, icon: Icon, detail }) => (
-            <li key={name} className="flex items-center gap-3 py-6">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-neutral-800 text-neutral-200">
+          {SPORTS.map(({ name, icon: Icon, detail, available }) => (
+            <li
+              key={name}
+              className={`flex items-center gap-3 py-6 ${available ? '' : 'opacity-40 grayscale'}`}
+            >
+              <span
+                className={`grid size-10 shrink-0 place-items-center rounded-xl ${
+                  available
+                    ? 'bg-primary-500/20 text-primary-300 ring-1 ring-primary-500/40'
+                    : 'bg-neutral-800 text-neutral-400'
+                }`}
+              >
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <div>
-                <p className="font-display font-semibold text-white">{name}</p>
-                <p className="text-xs text-neutral-400">{detail}</p>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2 font-display font-semibold text-white">
+                  {name}
+                  {available ? (
+                    <span className="rounded-full bg-secondary-500/15 px-2 py-0.5 text-[11px] font-medium text-secondary-400">
+                      Disponible
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-[11px] font-medium text-neutral-400">
+                      Próximamente
+                    </span>
+                  )}
+                </p>
+                <p className={`text-xs ${available ? 'text-neutral-300' : 'text-neutral-400'}`}>
+                  {detail}
+                </p>
               </div>
             </li>
           ))}
@@ -391,32 +427,6 @@ export function HomePage() {
               </details>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Closing CTA */}
-      <section className="page-container pb-20">
-        <div className="rounded-3xl bg-primary-600 px-6 py-14 text-center 2xl:py-20">
-          <h2 className="text-3xl font-semibold text-white sm:text-4xl">
-            Grupos, llaves y resultados en vivo en un solo lugar
-          </h2>
-          <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-primary-100">
-            <li className="flex items-center gap-1.5">
-              <Check className="size-4" aria-hidden="true" />
-              Gratis para empezar
-            </li>
-            <li className="flex items-center gap-1.5">
-              <Check className="size-4" aria-hidden="true" />
-              Listo en menos de 2 minutos
-            </li>
-          </ul>
-          <Button
-            variant="soft"
-            onClick={openCreateTournament}
-            className="mt-8 h-11 px-6 text-base"
-          >
-            Crear mi torneo
-          </Button>
         </div>
       </section>
 
