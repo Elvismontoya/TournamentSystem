@@ -32,9 +32,9 @@ export interface Tournament {
   removePlayer: (playerId: string) => Promise<void>;
   /** Removes every player and the draw. Throws ApiError (e.g. results entered). */
   removeAllPlayers: () => Promise<void>;
-  previewImport: (text: string) => Promise<ImportPreview>;
+  previewImport: (rows: string[][]) => Promise<ImportPreview>;
   /** Throws ApiError (with one detail per invalid line). */
-  importPlayers: (text: string) => Promise<void>;
+  importPlayers: (rows: string[][]) => Promise<void>;
   previewDraw: (groupSize: number) => Promise<DrawPreview>;
   drawGroups: (groupSize: number) => Promise<void>;
   setGroupPlayers: (groupIndex: number, playerIds: string[]) => Promise<void>;
@@ -321,9 +321,9 @@ export function useTournament(tournamentId: string): TournamentState {
         mutate(() => tournamentsApi.updatePlayer(id, playerId, entry)),
       removePlayer: (playerId) => mutate(() => tournamentsApi.removePlayer(id, playerId)),
       removeAllPlayers: () => mutate(() => tournamentsApi.removeAllPlayers(id)),
-      previewImport: (text) => tournamentsApi.previewImport(id, text),
-      importPlayers: (text) =>
-        mutate(async () => (await tournamentsApi.importPlayers(id, text)).view),
+      previewImport: (rows) => tournamentsApi.previewImport(id, rows),
+      importPlayers: (rows) =>
+        mutate(async () => (await tournamentsApi.importPlayers(id, rows)).view),
       previewDraw: (groupSize) => tournamentsApi.previewDraw(id, groupSize),
       drawGroups: (groupSize) => mutate(() => tournamentsApi.drawGroups(id, groupSize)),
       setGroupPlayers: (groupIndex, playerIds) =>

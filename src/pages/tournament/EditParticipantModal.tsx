@@ -4,21 +4,25 @@ import { ApiError } from '../../api/client.ts';
 import type { Player, PlayerUpdate } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
 import { Button } from '../../components/ui/Button.tsx';
-import { Field, Input } from '../../components/ui/form.tsx';
+import { Field, Input, Select } from '../../components/ui/form.tsx';
+import { GENDERS } from '../../constants/catalog.ts';
 
 interface EditParticipantModalProps {
   player: Player;
   /** Every registered player, to warn about a Nr. already taken before sending. */
   players: Player[];
+  /** The tournament's categories, plus the player's own if it's another one (imported). */
+  categories: string[];
   onClose: () => void;
   /** Saves on the server; rejects with ApiError (e.g. Nr. taken). */
   onSave: (playerId: string, entry: PlayerUpdate) => Promise<void>;
 }
 
-/** Edits a registered player's name, delegation, Nr. and ranking. */
+/** Edits a registered player's name, league, Nr., gender, category and ranking. */
 export function EditParticipantModal({
   player,
   players,
+  categories,
   onClose,
   onSave,
 }: EditParticipantModalProps) {
@@ -27,11 +31,17 @@ export function EditParticipantModal({
     delegation: player.delegation,
     bib: String(player.bib),
     ranking: player.ranking === null ? '' : String(player.ranking),
+    gender: GENDERS.find((option) => option.value === player.gender)?.label ?? '',
+    category: player.category ?? '',
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const categoryOptions =
+    player.category && !categories.includes(player.category)
+      ? [...categories, player.category]
+      : categories;
 
-  const set = (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const set = (field: keyof typeof form) => (event: { target: { value: string } }) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
     setError(null);
   };
@@ -47,6 +57,15 @@ export function EditParticipantModal({
       setError('El Nr. debe ser un número entero mayor que 0.');
       return;
     }
+    const gender = GENDERS.find((option) => option.label === form.gender)?.value;
+    if (!gender) {
+      setError('Elige el género.');
+      return;
+    }
+    if (form.category === '') {
+      setError('Elige la categoría.');
+      return;
+    }
     const ranking = form.ranking.trim() === '' ? null : Number(form.ranking);
     if (ranking !== null && (!Number.isInteger(ranking) || ranking < 0)) {
       setError('El ranking debe ser un número entero (0 o más).');
@@ -60,7 +79,14 @@ export function EditParticipantModal({
     }
     setSaving(true);
     try {
-      await onSave(player.id, { name, delegation: form.delegation.trim(), bib, ranking });
+      await onSave(player.id, {
+        name,
+        delegation: form.delegation.trim(),
+        bib,
+        ranking,
+        gender,
+        category: form.category,
+      });
       onClose();
     } catch (failure) {
       setError(
@@ -75,7 +101,7 @@ export function EditParticipantModal({
       open
       onClose={onClose}
       title="Editar jugador"
-      description="Los cambios se ven en los grupos, partidos y llaves; los resultados no cambian."
+      description="Los campos con * son obligatorios. Los cambios se ven en los grupos, partidos y llaves; los resultados no cambian."
     >
       <form
         onSubmit={(event) => {
@@ -85,7 +111,7 @@ export function EditParticipantModal({
         className="space-y-5"
         noValidate
       >
-        <Field id="edit-participant-name" label="Nombre completo">
+        <Field id="edit-participant-name" label="Nombre completo" required>
           <Input
             id="edit-participant-name"
             type="text"
@@ -96,7 +122,7 @@ export function EditParticipantModal({
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="edit-participant-delegation" label="Delegación, liga o club (opcional)">
+          <Field id="edit-participant-delegation" label="Liga, delegación o club">
             <Input
               id="edit-participant-delegation"
               type="text"
@@ -104,7 +130,7 @@ export function EditParticipantModal({
               onChange={set('delegation')}
             />
           </Field>
-          <Field id="edit-participant-bib" label="Número (Nr.)">
+          <Field id="edit-participant-bib" label="Número (Nr.)" required>
             <Input
               id="edit-participant-bib"
               type="number"
@@ -113,9 +139,25 @@ export function EditParticipantModal({
               onChange={set('bib')}
             />
           </Field>
+          <Field id="edit-participant-gender" label="Género" required>
+            <Select
+              id="edit-participant-gender"
+              options={GENDERS.map((option) => option.label)}
+              value={form.gender}
+              onChange={set('gender')}
+            />
+          </Field>
+          <Field id="edit-participant-category" label="Categoría" required>
+            <Select
+              id="edit-participant-category"
+              options={categoryOptions}
+              value={form.category}
+              onChange={set('category')}
+            />
+          </Field>
           <Field
             id="edit-participant-ranking"
-            label="Puntos de ranking (opcional)"
+            label="Puntos de ranking"
             hint="Cambia su lugar en la lista y como cabeza de serie en el próximo sorteo."
           >
             <Input

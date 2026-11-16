@@ -3,6 +3,8 @@
 // each entry already has the shape of a row: an id, the name that gets saved, and whether
 // it can be chosen yet. Only what the platform supports today is available.
 
+import type { Gender } from '../api/types.ts';
+
 export interface CatalogItem {
   id: string;
   name: string;
@@ -29,6 +31,11 @@ export const MODALITIES: CatalogItem[] = [
   { id: 'dobles', name: 'Dobles', available: false },
   { id: 'dobles-mixtos', name: 'Dobles mixtos', available: false },
   { id: 'equipos', name: 'Equipos', available: false },
+];
+
+export const GENDERS: { value: Gender; label: string }[] = [
+  { value: 'F', label: 'Femenino' },
+  { value: 'M', label: 'Masculino' },
 ];
 
 /** Age categories. A tournament can include several (or all). */

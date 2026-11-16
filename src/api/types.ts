@@ -1,6 +1,19 @@
 // API contract: the shapes TournamentSystem-backend returns (copied from its
 // src/services/tournament.view.ts and src/domain). Keep both in sync when the API changes.
 
+export type Gender = 'F' | 'M';
+
+/**
+ * What each player plays. Doubles, mixed doubles and teams hold the code shared by the
+ * partners/teammates ("DF1", "DX2", "201"); null = doesn't play it.
+ */
+export interface PlayerModalities {
+  individual: boolean;
+  doubles: string | null;
+  mixed: string | null;
+  team: string | null;
+}
+
 export interface Player {
   id: string;
   /** Registration number ("Nr."), fixed for the whole tournament. */
@@ -9,14 +22,32 @@ export interface Player {
   /** Delegation, league, club or team the player represents. */
   delegation: string;
   ranking: number | null;
+  gender: Gender | null;
+  /** Age category ("Sub 13"…), or null if not given. */
+  category: string | null;
+  modalities: PlayerModalities;
 }
 
+/** Body of POST /participantes (a player added by hand; the Nr. is assigned). */
 export interface NewPlayer {
   name: string;
   delegation: string;
   ranking: number | null;
-  /** Optional: the next free Nr. is used if missing. */
+  gender: Gender | null;
+  category: string | null;
+  /** Plays the individual event. */
+  individual: boolean;
+}
+
+/** A player read from a spreadsheet (import preview). */
+export interface ImportedPlayer {
+  name: string;
+  delegation: string;
+  ranking: number | null;
   bib?: number;
+  gender: Gender | null;
+  category: string | null;
+  modalities: PlayerModalities;
 }
 
 /** Body of PUT /participantes/:playerId: everything editable (the Nr. is required). */
@@ -25,8 +56,9 @@ export interface PlayerUpdate {
   delegation: string;
   ranking: number | null;
   bib: number;
+  gender: Gender | null;
+  category: string | null;
 }
-
 /** Points of one set: [first player, second player]; null = not entered yet. */
 export type SetScore = [number | null, number | null];
 
@@ -300,7 +332,9 @@ export interface DrawPreview {
 }
 
 export interface ImportPreview {
-  players: NewPlayer[];
-  /** One message per line that couldn't be read. */
+  players: ImportedPlayer[];
+  /** One message per row with a problem. */
   errors: string[];
+  /** Rows without an X in IND (other modalities only): not imported for now. */
+  skipped: number;
 }

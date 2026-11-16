@@ -1,39 +1,43 @@
 import { CircleCheck } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { Modal } from '../../components/Modal.tsx';
-import { Button } from '../../components/ui/Button.tsx';
-import { Field, Input } from '../../components/ui/form.tsx';
 import { ApiError } from '../../api/client.ts';
 import type { NewPlayer, Player } from '../../api/types.ts';
+import { Modal } from '../../components/Modal.tsx';
+import { Button } from '../../components/ui/Button.tsx';
+import { Field, Input, Select } from '../../components/ui/form.tsx';
+import { GENDERS } from '../../constants/catalog.ts';
 
 interface AddParticipantModalProps {
   open: boolean;
   onClose: () => void;
-  players: Player[];
-  /** Nr. the server assigns if none is given. */
-  nextBib: number;
-  /** Registers on the server; rejects with ApiError (e.g. Nr. taken). */
+  /** The tournament's categories (Configuración), to choose the player's. */
+  categories: string[];
+  /** Registers on the server (the Nr. is assigned there); rejects with ApiError. */
   onAdd: (entry: NewPlayer) => Promise<Player>;
 }
 
-const EMPTY = { name: '', delegation: '', bib: '', ranking: '', email: '', phone: '' };
-
-/** Registers one individual player. Email and phone are only part of the mockup (not sent). */
+/** Registers one player by hand, in the individual event (the only one for now). */
 export function AddParticipantModal({
   open,
   onClose,
-  players,
-  nextBib,
+  categories,
   onAdd,
 }: AddParticipantModalProps) {
-  const [form, setForm] = useState(EMPTY);
+  // With a single category, it is already chosen.
+  const empty = {
+    name: '',
+    delegation: '',
+    ranking: '',
+    gender: '',
+    category: categories.length === 1 ? (categories[0] ?? '') : '',
+  };
+  const [form, setForm] = useState(empty);
   const [error, setError] = useState<string | null>(null);
   const [lastAdded, setLastAdded] = useState<Player | null>(null);
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
-  const suggestedBib = nextBib;
 
-  const set = (field: keyof typeof EMPTY) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const set = (field: keyof typeof empty) => (event: { target: { value: string } }) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
     setError(null);
   };
@@ -44,15 +48,18 @@ export function AddParticipantModal({
       setError('Escribe el nombre del jugador.');
       return;
     }
-    const bib = form.bib.trim() === '' ? undefined : Number(form.bib);
-    if (bib !== undefined && (!Number.isInteger(bib) || bib < 1)) {
-      setError('El Nr. debe ser un número entero mayor que 0.');
+    const gender = GENDERS.find((option) => option.label === form.gender)?.value;
+    if (!gender) {
+      setError('Elige el género.');
       return;
     }
-    // Quick check before sending; the server checks it again (and decides).
-    const owner = players.find((player) => player.bib === bib);
-    if (owner) {
-      setError(`El Nr. ${String(bib)} ya es de ${owner.name}.`);
+    if (form.category === '') {
+      setError('Elige la categoría.');
+      return;
+    }
+    const ranking = form.ranking.trim() === '' ? null : Number(form.ranking);
+    if (ranking !== null && (!Number.isInteger(ranking) || ranking < 0)) {
+      setError('El ranking debe ser un número entero (0 o más).');
       return;
     }
     setSaving(true);
@@ -61,8 +68,10 @@ export function AddParticipantModal({
       added = await onAdd({
         name,
         delegation: form.delegation.trim(),
-        ranking: form.ranking.trim() === '' ? null : Number(form.ranking),
-        ...(bib === undefined ? {} : { bib }),
+        ranking,
+        gender,
+        category: form.category,
+        individual: true,
       });
     } catch (failure) {
       setError(failure instanceof ApiError ? failure.message : 'No se pudo inscribir.');
@@ -71,7 +80,8 @@ export function AddParticipantModal({
       setSaving(false);
     }
     if (another) {
-      setForm(EMPTY);
+      // Keep league, gender and category: the next player is often from the same list.
+      setForm((current) => ({ ...current, name: '', ranking: '' }));
       setLastAdded(added);
       nameRef.current?.focus();
     } else {
@@ -84,7 +94,7 @@ export function AddParticipantModal({
       open={open}
       onClose={onClose}
       title="Añadir jugador"
-      description="Inscripción individual. No hay límite de cupos."
+      description="Individual. Los campos con * son obligatorios; el Nr. se asigna solo."
     >
       <form
         onSubmit={(event) => {
@@ -105,7 +115,7 @@ export function AddParticipantModal({
           </p>
         )}
 
-        <Field id="participant-name" label="Nombre completo">
+        <Field id="participant-name" label="Nombre completo" required>
           <Input
             ref={nameRef}
             id="participant-name"
@@ -119,7 +129,7 @@ export function AddParticipantModal({
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="participant-delegation" label="Delegación, liga o club (opcional)">
+          <Field id="participant-delegation" label="Liga, delegación o club">
             <Input
               id="participant-delegation"
               name="delegation"
@@ -129,25 +139,25 @@ export function AddParticipantModal({
               onChange={set('delegation')}
             />
           </Field>
-          <Field
-            id="participant-bib"
-            label="Número (Nr.)"
-            hint={`Si lo dejas vacío se asigna el siguiente libre (${String(suggestedBib)}).`}
-          >
-            <Input
-              id="participant-bib"
-              name="bib"
-              type="number"
-              min={1}
-              placeholder={String(suggestedBib)}
-              aria-describedby="participant-bib-hint"
-              value={form.bib}
-              onChange={set('bib')}
+          <Field id="participant-gender" label="Género" required>
+            <Select
+              id="participant-gender"
+              options={GENDERS.map((option) => option.label)}
+              value={form.gender}
+              onChange={set('gender')}
+            />
+          </Field>
+          <Field id="participant-category" label="Categoría" required>
+            <Select
+              id="participant-category"
+              options={categories}
+              value={form.category}
+              onChange={set('category')}
             />
           </Field>
           <Field
             id="participant-ranking"
-            label="Puntos de ranking (opcional)"
+            label="Puntos de ranking"
             hint="Define su lugar como cabeza de serie."
           >
             <Input
@@ -159,26 +169,6 @@ export function AddParticipantModal({
               aria-describedby="participant-ranking-hint"
               value={form.ranking}
               onChange={set('ranking')}
-            />
-          </Field>
-          <Field id="participant-email" label="Correo (opcional)">
-            <Input
-              id="participant-email"
-              name="email"
-              type="email"
-              placeholder="jugador@correo.com"
-              value={form.email}
-              onChange={set('email')}
-            />
-          </Field>
-          <Field id="participant-phone" label="Teléfono (opcional)">
-            <Input
-              id="participant-phone"
-              name="phone"
-              type="tel"
-              placeholder="+57 300 000 0000"
-              value={form.phone}
-              onChange={set('phone')}
             />
           </Field>
         </div>

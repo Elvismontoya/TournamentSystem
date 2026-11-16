@@ -1,9 +1,9 @@
 import { Info, Pencil, Search, Trash2, Upload, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
+import type { Player } from '../../api/types.ts';
 import { Button } from '../../components/ui/Button.tsx';
 import { SectionHeader } from '../../components/ui/SectionHeader.tsx';
-import type { Player } from '../../api/types.ts';
 import { matchesPlayer } from '../../features/groupStage/display.ts';
 import { PlayerBib } from '../../features/groupStage/PlayerBadges.tsx';
 import type { Tournament } from '../../features/tournament/useTournament.ts';
@@ -13,8 +13,8 @@ import { ImportParticipantsModal } from './ImportParticipantsModal.tsx';
 import { RemoveAllParticipantsModal } from './RemoveAllParticipantsModal.tsx';
 import { RemoveParticipantModal } from './RemoveParticipantModal.tsx';
 
-// Registered players, from the API (ordered by ranking).
-// Being registered means the player plays: there is no confirmation status.
+// Registered players of the individual event (the only one for now), from the API, ordered
+// by ranking. Being registered means the player plays: there is no confirmation status.
 
 const AVATAR_TONES = [
   'bg-primary-500/20 text-primary-200',
@@ -42,6 +42,8 @@ type OpenModal =
   | { kind: 'remove'; player: Player }
   | null;
 
+const ALL_CATEGORIES = 'Todas las categorías';
+
 export function ParticipantsPage() {
   const {
     view,
@@ -52,19 +54,32 @@ export function ParticipantsPage() {
     previewImport,
     importPlayers,
   } = useOutletContext<Tournament>();
-  const { players, seedIds, groupStage, knockout, nextBib } = view;
+  const { players, seedIds, groupStage, knockout, settings } = view;
   // The top players by ranking head one group each (decided by the server).
   const SEEDS = seedIds.length;
   const [openModal, setOpenModal] = useState<OpenModal>(null);
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState(ALL_CATEGORIES);
   const closeModal = () => {
     setOpenModal(null);
   };
-  const visiblePlayers = players.filter((player) => matchesPlayer(player, query));
+
   /** Name of the group a player is in, or null (not drawn yet, or "sin grupo"). */
   const groupNameOf = (player: Player) =>
     groupStage?.groups.find((group) => group.players.some((member) => member.id === player.id))
       ?.name ?? null;
+
+  // Categories present among the players (for the filter): the tournament's first.
+  const presentCategories = [
+    ...new Set([
+      ...settings.categories.filter((name) => players.some((player) => player.category === name)),
+      ...players.map((player) => player.category).filter((name) => name !== null),
+    ]),
+  ];
+  const visiblePlayers = players.filter(
+    (player) =>
+      matchesPlayer(player, query) && (category === ALL_CATEGORIES || player.category === category),
+  );
 
   const registered = players.length;
   // Registered after the group draw: they wait in "Sin grupo" until placed.
@@ -74,7 +89,7 @@ export function ParticipantsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Participantes"
-        text={`${String(registered)} ${registered === 1 ? 'jugador inscrito' : 'jugadores inscritos'}.`}
+        text={`Individual · ${String(registered)} ${registered === 1 ? 'jugador inscrito' : 'jugadores inscritos'}.`}
       >
         <button
           type="button"
@@ -106,17 +121,6 @@ export function ParticipantsPage() {
         </Button>
       </SectionHeader>
 
-      {/* Registered count (no limit of places) */}
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4 text-sm">
-        <span className="text-neutral-300">Jugadores inscritos</span>
-        <span className="flex items-baseline gap-2">
-          <span className="font-display text-2xl font-semibold text-white tabular-nums">
-            {registered}
-          </span>
-          <span className="text-xs text-neutral-500">sin límite de cupos</span>
-        </span>
-      </div>
-
       {withoutGroup.length > 0 && (
         <p className="flex items-start gap-2 rounded-xl border border-tertiary-500/40 bg-tertiary-500/10 px-4 py-3 text-sm text-tertiary-200">
           <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -134,26 +138,44 @@ export function ParticipantsPage() {
         </p>
       )}
 
-      {/* Toolbar */}
+      {/* Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-neutral-400">Ordenados por ranking</p>
-
-        <label className="relative block w-full sm:w-72">
-          <span className="sr-only">Buscar jugador</span>
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-500"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            placeholder="Buscar por nombre o delegación"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-            className="h-10 w-full rounded-lg border border-neutral-800 bg-neutral-900 pr-3 pl-9 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-primary-500 focus:outline-none"
-          />
-        </label>
+        <div className="flex w-full flex-wrap gap-3 sm:w-auto">
+          {presentCategories.length > 1 && (
+            <label className="block w-full sm:w-52">
+              <span className="sr-only">Categoría</span>
+              <select
+                value={category}
+                onChange={(event) => {
+                  setCategory(event.target.value);
+                }}
+                className="h-10 w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 text-sm text-neutral-100 focus:border-primary-500 focus:outline-none"
+              >
+                <option>{ALL_CATEGORIES}</option>
+                {presentCategories.map((name) => (
+                  <option key={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="relative block w-full sm:w-72">
+            <span className="sr-only">Buscar jugador</span>
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-500"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              placeholder="Buscar por nombre o liga"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+              className="h-10 w-full rounded-lg border border-neutral-800 bg-neutral-900 pr-3 pl-9 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-primary-500 focus:outline-none"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Players table */}
@@ -175,7 +197,15 @@ export function ParticipantsPage() {
                 Jugador
               </th>
               <th scope="col" className="hidden px-3 py-3 font-medium md:table-cell">
-                Delegación
+                Liga
+              </th>
+              <th scope="col" className="hidden px-3 py-3 font-medium sm:table-cell">
+                <abbr title="Género" className="no-underline">
+                  Gén.
+                </abbr>
+              </th>
+              <th scope="col" className="hidden px-3 py-3 font-medium lg:table-cell">
+                Categoría
               </th>
               <th scope="col" className="px-3 py-3 text-right font-medium">
                 Ranking
@@ -188,20 +218,19 @@ export function ParticipantsPage() {
           <tbody className="divide-y divide-neutral-800">
             {visiblePlayers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-8 text-center text-sm text-neutral-400">
+                <td colSpan={8} className="px-5 py-8 text-center text-sm text-neutral-400">
                   {players.length === 0
                     ? 'Todavía no hay jugadores inscritos.'
-                    : `Ningún jugador coincide con «${query}».`}
+                    : 'Ningún jugador coincide con la búsqueda.'}
                 </td>
               </tr>
             )}
             {visiblePlayers.map((player, index) => {
               const seed = seedIds.indexOf(player.id) + 1;
-              const isSeed = seed > 0;
               return (
                 <tr key={player.id} className="transition-colors hover:bg-neutral-850">
                   <td className="py-3 pr-1 pl-4 sm:px-5">
-                    {isSeed ? (
+                    {seed > 0 ? (
                       <span className="inline-grid size-7 place-items-center rounded-md bg-tertiary-500/15 font-display text-xs font-bold text-tertiary-300">
                         {seed}
                       </span>
@@ -225,13 +254,19 @@ export function ParticipantsPage() {
                       <div className="min-w-0">
                         <p className="truncate font-medium text-white">{player.name}</p>
                         <p className="truncate text-xs text-neutral-500 md:hidden">
-                          {player.delegation}
+                          {[player.delegation, player.category].filter(Boolean).join(' · ')}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="hidden px-3 py-3 text-neutral-300 md:table-cell">
                     {player.delegation}
+                  </td>
+                  <td className="hidden px-3 py-3 text-neutral-300 sm:table-cell">
+                    {player.gender ?? <span className="text-neutral-600">—</span>}
+                  </td>
+                  <td className="hidden px-3 py-3 text-neutral-300 lg:table-cell">
+                    {player.category ?? <span className="text-neutral-600">—</span>}
                   </td>
                   <td className="px-2 py-3 text-right font-display text-neutral-100 tabular-nums sm:px-3">
                     {player.ranking ?? <span className="text-neutral-600">—</span>}
@@ -280,8 +315,7 @@ export function ParticipantsPage() {
         <AddParticipantModal
           open
           onClose={closeModal}
-          players={players}
-          nextBib={nextBib}
+          categories={settings.categories}
           onAdd={addPlayer}
         />
       )}
@@ -289,6 +323,7 @@ export function ParticipantsPage() {
         <EditParticipantModal
           player={openModal.player}
           players={players}
+          categories={settings.categories}
           onClose={closeModal}
           onSave={updatePlayer}
         />

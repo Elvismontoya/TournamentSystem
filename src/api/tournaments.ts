@@ -43,14 +43,15 @@ export const tournamentsApi = {
   removePlayer: (id: string, playerId: string) =>
     request<TournamentView>('DELETE', `${base(id)}/participantes/${encodeURIComponent(playerId)}`),
 
-  previewImport: (id: string, text: string) =>
-    request<ImportPreview>('POST', `${base(id)}/participantes/importar`, { text, dryRun: true }),
+  /** How the server reads the spreadsheet rows (cells of the first sheet), without importing. */
+  previewImport: (id: string, rows: string[][]) =>
+    request<ImportPreview>('POST', `${base(id)}/participantes/importar`, { rows, dryRun: true }),
 
-  importPlayers: (id: string, text: string) =>
+  importPlayers: (id: string, rows: string[][]) =>
     request<{ view: TournamentView; added: Player[] }>(
       'POST',
       `${base(id)}/participantes/importar`,
-      { text },
+      { rows },
     ),
 
   previewDraw: (id: string, groupSize: number) =>
