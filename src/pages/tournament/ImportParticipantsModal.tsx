@@ -4,7 +4,6 @@ import { ApiError } from '../../api/client.ts';
 import type { ImportPreview } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
 import { Button } from '../../components/ui/Button.tsx';
-import { Field, Textarea } from '../../components/ui/form.tsx';
 
 interface ImportParticipantsModalProps {
   open: boolean;
@@ -28,7 +27,7 @@ function downloadTemplate() {
 }
 
 /**
- * Registers many players at once from a pasted list or a CSV file: one player per line,
+ * Registers many players at once from a CSV file (no manual editing): one player per line,
  * "name, delegation, ranking". The Nr. is assigned in order (next free numbers).
  */
 export function ImportParticipantsModal({
@@ -75,7 +74,7 @@ export function ImportParticipantsModal({
       open={open}
       onClose={onClose}
       title="Importar lista de jugadores"
-      description="Sube un archivo CSV o pega la lista: una fila por jugador."
+      description="Sube un archivo CSV: una fila por jugador."
     >
       <form
         onSubmit={(event) => {
@@ -114,29 +113,20 @@ export function ImportParticipantsModal({
           />
         </label>
 
-        <div className="flex items-center gap-3 text-xs text-neutral-500">
-          <span className="h-px flex-1 bg-neutral-800" />o pega la lista
-          <span className="h-px flex-1 bg-neutral-800" />
-        </div>
+        <p className="text-xs text-neutral-500">
+          Formato de cada fila: nombre, delegación, puntos de ranking. La delegación y los puntos
+          son opcionales; el Nr. se asigna en orden. Descarga la plantilla si no la tienes.
+        </p>
 
-        <Field
-          id="import-text"
-          label="Lista de jugadores"
-          hint="Formato: nombre, delegación, puntos de ranking. La delegación y los puntos son opcionales; el Nr. se asigna en orden."
-        >
-          <Textarea
-            id="import-text"
-            name="list"
-            rows={6}
-            aria-describedby="import-text-hint"
-            className="font-mono"
-            placeholder={'Carlos Silva, Club Universitario, 2150\nMarcos Ruiz, TM Los Andes, 2080'}
-            value={text}
-            onChange={(event) => {
-              setText(event.target.value);
-            }}
-          />
-        </Field>
+        {fileName && players.length > 0 && errors.length === 0 && (
+          <p
+            role="status"
+            className="rounded-xl border border-secondary-500/30 bg-secondary-500/10 px-4 py-3 text-sm text-secondary-200"
+          >
+            Se leyeron {players.length} {players.length === 1 ? 'jugador' : 'jugadores'} del
+            archivo.
+          </p>
+        )}
 
         {errors.length > 0 && (
           <ul className="flex flex-col gap-1 rounded-xl border border-tertiary-500/40 bg-tertiary-500/10 px-4 py-3 text-sm text-tertiary-200">

@@ -37,6 +37,9 @@ export const tournamentsApi = {
       entry,
     ),
 
+  /** Removes every player (and the draw), while there are no results. */
+  removeAllPlayers: (id: string) => request<TournamentView>('DELETE', `${base(id)}/participantes`),
+
   removePlayer: (id: string, playerId: string) =>
     request<TournamentView>('DELETE', `${base(id)}/participantes/${encodeURIComponent(playerId)}`),
 

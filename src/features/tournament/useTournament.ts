@@ -30,6 +30,8 @@ export interface Tournament {
   updatePlayer: (playerId: string, entry: PlayerUpdate) => Promise<void>;
   /** Throws ApiError (e.g. the player is in a group). */
   removePlayer: (playerId: string) => Promise<void>;
+  /** Removes every player and the draw. Throws ApiError (e.g. results entered). */
+  removeAllPlayers: () => Promise<void>;
   previewImport: (text: string) => Promise<ImportPreview>;
   /** Throws ApiError (with one detail per invalid line). */
   importPlayers: (text: string) => Promise<void>;
@@ -318,6 +320,7 @@ export function useTournament(tournamentId: string): TournamentState {
       updatePlayer: (playerId, entry) =>
         mutate(() => tournamentsApi.updatePlayer(id, playerId, entry)),
       removePlayer: (playerId) => mutate(() => tournamentsApi.removePlayer(id, playerId)),
+      removeAllPlayers: () => mutate(() => tournamentsApi.removeAllPlayers(id)),
       previewImport: (text) => tournamentsApi.previewImport(id, text),
       importPlayers: (text) =>
         mutate(async () => (await tournamentsApi.importPlayers(id, text)).view),

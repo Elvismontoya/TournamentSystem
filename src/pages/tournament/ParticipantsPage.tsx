@@ -1,4 +1,4 @@
-import { Info, Link2, Pencil, Search, Trash2, Upload, UserPlus } from 'lucide-react';
+import { Info, Pencil, Search, Trash2, Upload, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '../../components/ui/Button.tsx';
@@ -10,6 +10,7 @@ import type { Tournament } from '../../features/tournament/useTournament.ts';
 import { AddParticipantModal } from './AddParticipantModal.tsx';
 import { EditParticipantModal } from './EditParticipantModal.tsx';
 import { ImportParticipantsModal } from './ImportParticipantsModal.tsx';
+import { RemoveAllParticipantsModal } from './RemoveAllParticipantsModal.tsx';
 import { RemoveParticipantModal } from './RemoveParticipantModal.tsx';
 
 // Registered players, from the API (ordered by ranking).
@@ -34,12 +35,24 @@ const iconButtonClass =
   'grid size-8 place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white';
 
 type OpenModal =
-  'add' | 'import' | { kind: 'edit'; player: Player } | { kind: 'remove'; player: Player } | null;
+  | 'add'
+  | 'import'
+  | 'removeAll'
+  | { kind: 'edit'; player: Player }
+  | { kind: 'remove'; player: Player }
+  | null;
 
 export function ParticipantsPage() {
-  const { view, addPlayer, updatePlayer, removePlayer, previewImport, importPlayers } =
-    useOutletContext<Tournament>();
-  const { players, seedIds, groupStage, nextBib } = view;
+  const {
+    view,
+    addPlayer,
+    updatePlayer,
+    removePlayer,
+    removeAllPlayers,
+    previewImport,
+    importPlayers,
+  } = useOutletContext<Tournament>();
+  const { players, seedIds, groupStage, knockout, nextBib } = view;
   // The top players by ranking head one group each (decided by the server).
   const SEEDS = seedIds.length;
   const [openModal, setOpenModal] = useState<OpenModal>(null);
@@ -63,6 +76,17 @@ export function ParticipantsPage() {
         title="Participantes"
         text={`${String(registered)} ${registered === 1 ? 'jugador inscrito' : 'jugadores inscritos'}.`}
       >
+        <button
+          type="button"
+          disabled={registered === 0}
+          onClick={() => {
+            setOpenModal('removeAll');
+          }}
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-500/40 px-4 font-display text-sm font-medium text-red-300 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+        >
+          <Trash2 className="size-4" aria-hidden="true" />
+          Eliminar todos
+        </button>
         <Button
           variant="outlined"
           onClick={() => {
@@ -82,29 +106,15 @@ export function ParticipantsPage() {
         </Button>
       </SectionHeader>
 
-      {/* Registered count (no limit of places) + registration link */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4 text-sm">
-          <span className="text-neutral-300">Jugadores inscritos</span>
-          <span className="flex items-baseline gap-2">
-            <span className="font-display text-2xl font-semibold text-white tabular-nums">
-              {registered}
-            </span>
-            <span className="text-xs text-neutral-500">sin límite de cupos</span>
+      {/* Registered count (no limit of places) */}
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4 text-sm">
+        <span className="text-neutral-300">Jugadores inscritos</span>
+        <span className="flex items-baseline gap-2">
+          <span className="font-display text-2xl font-semibold text-white tabular-nums">
+            {registered}
           </span>
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4">
-          <Link2 className="size-5 shrink-0 text-secondary-400" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="text-sm text-neutral-300">Inscripción abierta</p>
-            <p className="truncate font-mono text-xs text-neutral-500">
-              torneos.app/i/open-nacional-2026
-            </p>
-          </div>
-          <Button variant="secondary" className="ml-auto h-8 px-3 text-xs">
-            Copiar
-          </Button>
-        </div>
+          <span className="text-xs text-neutral-500">sin límite de cupos</span>
+        </span>
       </div>
 
       {withoutGroup.length > 0 && (
@@ -297,6 +307,15 @@ export function ParticipantsPage() {
           onClose={closeModal}
           onPreview={previewImport}
           onImport={importPlayers}
+        />
+      )}
+      {openModal === 'removeAll' && (
+        <RemoveAllParticipantsModal
+          registered={registered}
+          drawn={groupStage !== null}
+          hasResults={Boolean(groupStage?.hasResults) || Boolean(knockout?.hasResults)}
+          onClose={closeModal}
+          onRemoveAll={removeAllPlayers}
         />
       )}
     </div>
