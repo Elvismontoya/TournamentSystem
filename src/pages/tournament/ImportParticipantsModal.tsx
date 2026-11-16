@@ -9,8 +9,6 @@ import { Field, Textarea } from '../../components/ui/form.tsx';
 interface ImportParticipantsModalProps {
   open: boolean;
   onClose: () => void;
-  /** Places still free in the tournament. */
-  remaining: number;
   /** Asks the server how it reads the list (without importing). */
   onPreview: (text: string) => Promise<ImportPreview>;
   /** Imports on the server; rejects with ApiError (one detail per invalid line). */
@@ -36,7 +34,6 @@ function downloadTemplate() {
 export function ImportParticipantsModal({
   open,
   onClose,
-  remaining,
   onPreview,
   onImport,
 }: ImportParticipantsModalProps) {
@@ -71,8 +68,7 @@ export function ImportParticipantsModal({
   }, [text]);
 
   const { players, errors } = text.trim() === '' ? { players: [], errors: [] } : preview;
-  const overCapacity = players.length > remaining;
-  const canImport = players.length > 0 && errors.length === 0 && !overCapacity && !importing;
+  const canImport = players.length > 0 && errors.length === 0 && !importing;
 
   return (
     <Modal
@@ -142,14 +138,8 @@ export function ImportParticipantsModal({
           />
         </Field>
 
-        {(errors.length > 0 || overCapacity) && (
+        {errors.length > 0 && (
           <ul className="flex flex-col gap-1 rounded-xl border border-tertiary-500/40 bg-tertiary-500/10 px-4 py-3 text-sm text-tertiary-200">
-            {overCapacity && (
-              <li className="flex items-start gap-2">
-                <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                La lista tiene {players.length} jugadores y solo quedan {remaining} cupos.
-              </li>
-            )}
             {errors.slice(0, 5).map((error) => (
               <li key={error} className="flex items-start gap-2">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />

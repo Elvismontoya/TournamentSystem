@@ -2,7 +2,7 @@ import { CalendarDays, Info, LoaderCircle, Pencil, Shuffle, Trophy, Tv } from 'l
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { ApiError } from '../../api/client.ts';
-import type { DrawPreview, GroupView, Player } from '../../api/types.ts';
+import type { DrawPreview, GroupView, Player, Scoring } from '../../api/types.ts';
 import { Badge } from '../../components/ui/Badge.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
@@ -273,6 +273,7 @@ function GroupMatrix({
   players,
   seedIds,
   qualifiersPerGroup,
+  scoring,
   minSize,
   maxSize,
   query,
@@ -286,6 +287,7 @@ function GroupMatrix({
   /** Ids of the seeded players (top of the ranking, one per group). */
   seedIds: string[];
   qualifiersPerGroup: number;
+  scoring: Scoring;
   minSize: number;
   maxSize: number;
   /** Player search text; matching names are highlighted. */
@@ -495,7 +497,7 @@ function GroupMatrix({
 
           {multiTie && (
             <div className="pt-3">
-              <TieBreakPanel tie={multiTie} />
+              <TieBreakPanel tie={multiTie} scoring={scoring} />
             </div>
           )}
 
@@ -576,7 +578,7 @@ export function GroupsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Grupos"
-        text={`${describeSizes(groups.map((group) => group.players.length))} · clasifican los ${String(settings.qualifiersPerGroup)} primeros de cada grupo a la fase eliminatoria.`}
+        text={`${describeSizes(groups.map((group) => group.players.length))} · ${settings.qualifiersPerGroup === 1 ? 'clasifica el 1.º' : 'clasifican los 2 primeros'} de cada grupo a la fase eliminatoria.`}
       >
         <Button
           variant="outlined"
@@ -649,6 +651,7 @@ export function GroupsPage() {
               players={players}
               seedIds={seedIds}
               qualifiersPerGroup={settings.qualifiersPerGroup}
+              scoring={settings.scoring}
               minSize={settings.minGroupSize}
               maxSize={settings.maxGroupSize}
               query={playerQuery}

@@ -25,7 +25,7 @@ import { Badge } from '../components/ui/Badge.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
 import { STATUS_LABEL, tournamentStatus } from '../features/tournament/progress.ts';
-import { dateRangeText } from '../features/tournament/settingsText.ts';
+import { dateRangeText, modalitiesAndCategoriesText } from '../features/tournament/settingsText.ts';
 import { useTournament } from '../features/tournament/useTournament.ts';
 
 // The dashboard works for any sport. Everything comes from the API (TournamentSystem-backend);
@@ -89,7 +89,7 @@ export function TournamentLayout() {
   const status = tournamentStatus(tournament.view);
   const details: [LucideIcon, string | null][] = [
     [Table2, settings.sport],
-    [User, settings.category],
+    [User, modalitiesAndCategoriesText(settings)],
     [ListOrdered, settings.format],
     [CalendarDays, dateRangeText(settings)],
     [MapPin, settings.location],

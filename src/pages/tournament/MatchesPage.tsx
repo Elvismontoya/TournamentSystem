@@ -30,6 +30,7 @@ interface MatchCardProps {
   settings: Settings;
   locked: boolean;
   onChange: Tournament['updateSet'];
+  onScore: Tournament['updateScore'];
   onWalkover: Tournament['setWalkover'];
 }
 
@@ -40,6 +41,7 @@ function MatchCard({
   settings,
   locked,
   onChange,
+  onScore,
   onWalkover,
 }: MatchCardProps) {
   const { index: matchIndex } = match;
@@ -64,8 +66,12 @@ function MatchCard({
       match={match}
       walkoverText={walkoverText(settings)}
       lockedReason={locked ? KNOCKOUT_STARTED : undefined}
+      scoring={settings.scoring}
       onSet={(setIndex, side, value) => {
         onChange(groupIndex, matchIndex, setIndex, side, value);
+      }}
+      onScore={(side, value) => {
+        onScore(groupIndex, matchIndex, side, value);
       }}
       onWalkover={(absent) => {
         onWalkover(groupIndex, matchIndex, absent);
@@ -75,7 +81,7 @@ function MatchCard({
 }
 
 export function MatchesPage() {
-  const { view, updateSet, setWalkover } = useOutletContext<Tournament>();
+  const { view, updateSet, updateScore, setWalkover } = useOutletContext<Tournament>();
   const [filter, setFilter] = useState<GroupFilter>('all');
   const [query, setQuery] = useState('');
   const groups = view.groupStage?.groups;
@@ -178,6 +184,7 @@ export function MatchesPage() {
                   settings={view.settings}
                   locked={locked}
                   onChange={updateSet}
+                  onScore={updateScore}
                   onWalkover={setWalkover}
                 />
               ))}

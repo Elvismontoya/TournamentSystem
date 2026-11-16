@@ -30,11 +30,13 @@ function KnockoutMatches({
   knockout,
   settings,
   onSet,
+  onScore,
   onWalkover,
 }: {
   knockout: KnockoutView;
   settings: Settings;
   onSet: Tournament['updateKnockoutSet'];
+  onScore: Tournament['updateKnockoutScore'];
   onWalkover: Tournament['setKnockoutWalkover'];
 }) {
   const { thirdPlace } = knockout;
@@ -115,8 +117,12 @@ function KnockoutMatches({
                     match={match}
                     walkoverText={knockoutWalkoverText(settings)}
                     lockedReason={match.locked ? LOCKED_MATCH : undefined}
+                    scoring={settings.scoring}
                     onSet={(setIndex, side, value) => {
                       onSet(match.round, match.index, setIndex, side, value);
+                    }}
+                    onScore={(side, value) => {
+                      onScore(match.round, match.index, side, value);
                     }}
                     onWalkover={(absent) => {
                       onWalkover(match.round, match.index, absent);
@@ -199,8 +205,14 @@ function QualifierList({
 }
 
 export function BracketsPage() {
-  const { view, drawKnockout, moveKnockoutSlot, updateKnockoutSet, setKnockoutWalkover } =
-    useOutletContext<Tournament>();
+  const {
+    view,
+    drawKnockout,
+    moveKnockoutSlot,
+    updateKnockoutSet,
+    updateKnockoutScore,
+    setKnockoutWalkover,
+  } = useOutletContext<Tournament>();
   const { players, knockout, settings } = view;
   const groups = view.groupStage?.groups;
   const [editing, setEditing] = useState(false);
@@ -218,7 +230,11 @@ export function BracketsPage() {
         <EmptyState
           icon={Network}
           title="Primero sortea los grupos"
-          text="Las llaves se arman con los 2 primeros de cada grupo."
+          text={
+            settings.qualifiersPerGroup === 1
+              ? 'Las llaves se arman con el 1.º de cada grupo.'
+              : 'Las llaves se arman con los 2 primeros de cada grupo.'
+          }
         >
           <ButtonLink to="../grupos" relative="path" variant="soft">
             Ir a grupos
@@ -322,6 +338,7 @@ export function BracketsPage() {
           <ManualBracketEditor
             draw={knockout}
             groupCount={groups.length}
+            qualifiersPerGroup={settings.qualifiersPerGroup}
             describe={describe}
             resolveBib={resolveBib}
             onMove={moveKnockoutSlot}
@@ -377,6 +394,7 @@ export function BracketsPage() {
             knockout={knockout}
             settings={settings}
             onSet={updateKnockoutSet}
+            onScore={updateKnockoutScore}
             onWalkover={setKnockoutWalkover}
           />
         </>
@@ -384,7 +402,10 @@ export function BracketsPage() {
         <Card className="flex flex-col gap-4">
           <h3 className="font-semibold">Cómo se sortean las llaves</h3>
           <ul className="flex flex-col gap-2 text-sm text-neutral-300">
-            {RULES.map((rule) => (
+            {RULES.filter(
+              // Only winners qualify: there are no runners-up to place.
+              (rule) => settings.qualifiersPerGroup === 2 || !rule.startsWith('Los segundos'),
+            ).map((rule) => (
               <li key={rule} className="flex items-start gap-2">
                 <Info className="mt-0.5 size-4 shrink-0 text-primary-300" aria-hidden="true" />
                 {rule}
@@ -417,13 +438,15 @@ export function BracketsPage() {
           positionOf={positionOf}
           size={size}
         />
-        <QualifierList
-          title="Segundos de grupo"
-          place={2}
-          qualifiers={qualifiers}
-          positionOf={positionOf}
-          size={size}
-        />
+        {settings.qualifiersPerGroup === 2 && (
+          <QualifierList
+            title="Segundos de grupo"
+            place={2}
+            qualifiers={qualifiers}
+            positionOf={positionOf}
+            size={size}
+          />
+        )}
       </div>
     </div>
   );

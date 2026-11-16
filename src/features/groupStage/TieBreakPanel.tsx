@@ -1,12 +1,12 @@
 import { TriangleAlert } from 'lucide-react';
-import type { TieCriterion, TieDetail } from '../../api/types.ts';
+import type { Scoring, TieCriterion, TieDetail } from '../../api/types.ts';
 
 const DECIDED_BY: Record<TieCriterion, string> = {
   matchPoints: 'Desempatado por los puntos de los partidos entre ellos.',
   sets: 'Desempatado por el cociente de sets entre ellos.',
   points: 'Desempatado por el cociente de puntos entre ellos.',
   unresolved:
-    'Sin resolver: sets y puntos entre ellos son iguales. Hay que definir el orden por sorteo.',
+    'Sin resolver: los criterios entre ellos dan igual. Hay que definir el orden por sorteo.',
 };
 
 /** Won/lost ratio as shown on scoresheets ("1.667"); "∞" when nothing was lost. */
@@ -15,8 +15,10 @@ function ratio(won: number, lost: number): string {
 }
 
 /** Explains how a tie of 3+ players was resolved, using only the matches between them. */
-export function TieBreakPanel({ tie }: { tie: TieDetail }) {
+export function TieBreakPanel({ tie, scoring }: { tie: TieDetail; scoring: Scoring }) {
   const unresolved = tie.decidedBy === 'unresolved';
+  // Without set points (final score only) there is no point ratio.
+  const withPoints = scoring === 'points';
   const title =
     tie.players.length === 3 ? 'Triple empate' : `Empate de ${String(tie.players.length)}`;
 
@@ -28,7 +30,7 @@ export function TieBreakPanel({ tie }: { tie: TieDetail }) {
       </p>
       <p className="mt-1 text-xs text-neutral-400">
         Se calcula solo con los partidos entre los empatados: puntos → cociente de sets (ganados ÷
-        perdidos) → cociente de puntos.
+        perdidos){withPoints ? ' → cociente de puntos' : ''}.
       </p>
 
       <div className="mt-3 overflow-x-auto">
@@ -48,12 +50,16 @@ export function TieBreakPanel({ tie }: { tie: TieDetail }) {
               <th scope="col" className="pb-1 text-center font-medium">
                 Cociente
               </th>
-              <th scope="col" className="pb-1 text-center font-medium">
-                Puntos
-              </th>
-              <th scope="col" className="pb-1 text-center font-medium">
-                Cociente
-              </th>
+              {withPoints && (
+                <>
+                  <th scope="col" className="pb-1 text-center font-medium">
+                    Puntos
+                  </th>
+                  <th scope="col" className="pb-1 text-center font-medium">
+                    Cociente
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody className="tabular-nums">
@@ -76,16 +82,20 @@ export function TieBreakPanel({ tie }: { tie: TieDetail }) {
                 >
                   {ratio(entry.setsWon, entry.setsLost)}
                 </td>
-                <td className="py-1.5 text-center text-neutral-300">
-                  {entry.pointsWon}-{entry.pointsLost}
-                </td>
-                <td
-                  className={`py-1.5 text-center ${
-                    tie.decidedBy === 'points' ? 'font-semibold text-white' : 'text-neutral-400'
-                  }`}
-                >
-                  {ratio(entry.pointsWon, entry.pointsLost)}
-                </td>
+                {withPoints && (
+                  <>
+                    <td className="py-1.5 text-center text-neutral-300">
+                      {entry.pointsWon}-{entry.pointsLost}
+                    </td>
+                    <td
+                      className={`py-1.5 text-center ${
+                        tie.decidedBy === 'points' ? 'font-semibold text-white' : 'text-neutral-400'
+                      }`}
+                    >
+                      {ratio(entry.pointsWon, entry.pointsLost)}
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>

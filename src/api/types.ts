@@ -32,6 +32,8 @@ export type SetScore = [number | null, number | null];
 
 export interface MatchResult {
   sets: SetScore[];
+  /** Final score in sets ("3-1"), in tournaments scored by sets only. */
+  score?: [number | null, number | null];
   /** Side (0 = first player, 1 = second) that didn't show up. */
   walkover?: 0 | 1;
 }
@@ -185,24 +187,28 @@ export interface KnockoutView extends KnockoutDraw {
   played: number;
 }
 
+/** Results entered with the points of each set ("points": 11-8…) or only the final score ("sets": 3-1). */
+export type Scoring = 'points' | 'sets';
+
 export interface Settings {
   sport: string;
-  category: string;
+  format: string;
+  /** "Individual", "Dobles"… */
+  modalities: string[];
+  /** "Sub 11", "Mayores"… */
+  categories: string[];
   /** ISO dates (YYYY-MM-DD), or null if not set. */
   startDate: string | null;
   endDate: string | null;
   location: string;
-  participantType: string;
-  format: string;
-  capacity: number;
-  /** Lowest capacity allowed (players already registered, at least 2). */
-  minCapacity: number;
   minGroupSize: number;
   maxGroupSize: number;
   defaultGroupSize: number;
+  /** 1 or 2. */
   qualifiersPerGroup: number;
   /** The top of the ranking heads the groups in the draw. */
   seeded: boolean;
+  scoring: Scoring;
   /** Group matches: best of N sets. */
   setsPerMatch: number;
   setsToWin: number;
@@ -214,27 +220,28 @@ export interface Settings {
   pointsWin: number;
   pointsLoss: number;
   pointsWalkover: number;
-  /** Results were entered: match rules (sets, points per set, margin) can't change. */
+  /** Results were entered: match rules (sets, scoring, points per set, margin) can't change. */
   rulesLocked: boolean;
-  /** Knockout results were entered: knockoutSetsPerMatch can't change. */
+  /** Knockout results were entered: knockoutSetsPerMatch and qualifiers can't change. */
   knockoutRulesLocked: boolean;
   /** The match for 3rd place has results: it can't be turned off. */
   thirdPlaceLocked: boolean;
 }
 
-/** Body of PUT /configuracion: the name plus every editable setting. */
+/** Body of POST /torneos (creation wizard) and PUT /configuracion: name plus every setting. */
 export interface SettingsUpdate {
   name: string;
   sport: string;
-  category: string;
+  format: string;
+  modalities: string[];
+  categories: string[];
   startDate: string | null;
   endDate: string | null;
   location: string;
-  participantType: string;
-  format: string;
-  capacity: number;
   defaultGroupSize: number;
+  qualifiersPerGroup: number;
   seeded: boolean;
+  scoring: Scoring;
   setsPerMatch: number;
   gamePoints: number;
   winMargin: number;
@@ -243,6 +250,18 @@ export interface SettingsUpdate {
   pointsWin: number;
   pointsLoss: number;
   pointsWalkover: number;
+}
+
+/** One tournament in "Mis torneos" (GET /torneos). */
+export interface TournamentSummary {
+  id: string;
+  name: string;
+  sport: string;
+  format: string;
+  modalities: string[];
+  categories: string[];
+  startDate: string | null;
+  registered: number;
 }
 
 /** One line of the final ranking. */

@@ -44,18 +44,24 @@ const RANKING_LIMIT = 8;
 function detailsOf(settings: Settings): [string, string][] {
   const rows: [string, string | null][] = [
     ['Deporte', settings.sport],
-    ['Categoría', settings.category],
+    ['Modalidad', settings.modalities.join(', ')],
+    ['Categorías', settings.categories.join(', ')],
     ['Fechas', dateRangeText(settings)],
     ['Lugar', settings.location],
     ['Formato', settings.format],
     [
       'Grupos',
-      `De ${String(settings.defaultGroupSize)} · clasifican ${String(settings.qualifiersPerGroup)} por grupo`,
+      `De ${String(settings.defaultGroupSize)} · clasifica${settings.qualifiersPerGroup === 1 ? ' el 1.º' : 'n 1.º y 2.º'} de cada grupo`,
     ],
     ['Partidos', matchRuleText(settings)],
     ['Llaves', bestOfLabel(settings.knockoutSetsPerMatch)],
     ['Puntuación', scoringText(settings)],
-    ['Desempate', 'Puntos → Entre empatados: puntos, sets, puntos de juego → Sorteo'],
+    [
+      'Desempate',
+      settings.scoring === 'points'
+        ? 'Puntos → Entre empatados: puntos, sets, puntos de juego → Sorteo'
+        : 'Puntos → Entre empatados: puntos, sets → Sorteo',
+    ],
   ];
   return rows.filter((row): row is [string, string] => Boolean(row[1]));
 }
@@ -66,18 +72,19 @@ function statsOf(view: TournamentView): {
   detail: string;
   icon: LucideIcon;
 }[] {
-  const { players, settings, groupStage, knockout } = view;
-  const free = settings.capacity - players.length;
+  const { players, groupStage, knockout } = view;
   const played = (groupStage?.played ?? 0) + (knockout?.played ?? 0);
   const total = (groupStage?.total ?? 0) + (knockout?.playable ?? 0);
+  const withoutGroup = groupStage?.withoutGroup.length ?? 0;
   return [
     {
       label: 'Participantes',
       value: String(players.length),
-      detail:
-        free > 0
-          ? `de ${String(settings.capacity)} cupos · quedan ${String(free)}`
-          : `de ${String(settings.capacity)} cupos · completo`,
+      detail: !groupStage
+        ? 'inscritos · sin límite de cupos'
+        : withoutGroup > 0
+          ? `inscritos · ${String(withoutGroup)} sin grupo`
+          : 'inscritos · todos en un grupo',
       icon: Users,
     },
     {

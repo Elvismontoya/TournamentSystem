@@ -53,7 +53,7 @@ export function setupSteps(view: TournamentView): SetupStep[] {
     {
       title: 'Inscribir participantes',
       text: enough
-        ? `${String(players.length)} de ${String(settings.capacity)} inscritos.`
+        ? `${String(players.length)} inscritos.`
         : `Se necesitan al menos ${String(settings.minGroupSize)} para sortear (hay ${String(players.length)}).`,
       done: enough || groupStage !== null,
       action: { label: 'Añadir participantes', to: 'participantes' },

@@ -11,6 +11,8 @@ export type BibResolution = { slot: BracketSlot } | { error: string };
 interface ManualBracketEditorProps {
   draw: KnockoutDraw;
   groupCount: number;
+  /** 1: only group winners are in the bracket; 2: winners and runners-up. */
+  qualifiersPerGroup: number;
   describe: (slot: BracketSlot) => SlotInfo;
   /** Finds which qualifier (1.º/2.º of a group) the player with this Nr. is. */
   resolveBib: (bib: number) => BibResolution;
@@ -39,6 +41,7 @@ function without(record: ByPosition, key: number): ByPosition {
 export function ManualBracketEditor({
   draw,
   groupCount,
+  qualifiersPerGroup,
   describe,
   resolveBib,
   onMove,
@@ -52,7 +55,7 @@ export function ManualBracketEditor({
   const [errors, setErrors] = useState<ByPosition>({});
 
   const options = Array.from({ length: groupCount }, (_, groupIndex) =>
-    ([1, 2] as const).map((place) => ({
+    (qualifiersPerGroup === 1 ? ([1] as const) : ([1, 2] as const)).map((place) => ({
       key: `${String(place)}-${String(groupIndex)}`,
       label: `${String(place)}.º Grupo ${String(groupIndex + 1)}`,
     })),

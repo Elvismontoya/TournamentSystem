@@ -1,6 +1,6 @@
 import { Lock } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import type { MatchResult, MatchSummary, Player, SetScore } from '../../api/types.ts';
+import type { MatchResult, MatchSummary, Player, Scoring, SetScore } from '../../api/types.ts';
 import { Badge } from '../../components/ui/Badge.tsx';
 import { PlayerBib } from '../groupStage/PlayerBadges.tsx';
 
@@ -35,9 +35,27 @@ interface ScoreCardProps {
   walkoverText: string;
   /** When set, the match is read-only and this explains why. */
   lockedReason?: string;
+  /** "points": one box per set; "sets": only the final score (3-1). */
+  scoring: Scoring;
   onSet: (setIndex: number, side: 0 | 1, value: number | null) => void;
+  /** Final score in sets (scoring "sets"). */
+  onScore: (side: 0 | 1, value: number | null) => void;
   onWalkover: (absent: 0 | 1 | null) => void;
 }
+
+/** Score box for the final score: green for the winner, red when the score isn't possible. */
+function scoreInputClass(winner: boolean, invalid: boolean): string {
+  const base =
+    'h-10 w-14 rounded-md border text-center font-display text-lg font-bold tabular-nums focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30 focus:outline-none disabled:opacity-40';
+  if (winner) return `${base} border-secondary-500/40 bg-secondary-500/15 text-white`;
+  if (invalid) return `${base} border-red-500/60 bg-red-500/10 text-red-200`;
+  return `${base} border-neutral-700 bg-neutral-850 text-neutral-200`;
+}
+
+const digitsValue = (text: string): number | null => {
+  const digits = text.replace(/\D/g, '');
+  return digits === '' ? null : Number(digits);
+};
 
 export function ScoreCard({
   header,
@@ -46,13 +64,20 @@ export function ScoreCard({
   match,
   walkoverText,
   lockedReason,
+  scoring,
   onSet,
+  onScore,
   onWalkover,
 }: ScoreCardProps) {
   const [choosingWalkover, setChoosingWalkover] = useState(false);
   const { summary } = match;
   const { sets } = match.result;
+  const score = match.result.score ?? [null, null];
   const locked = lockedReason !== undefined;
+  const bySets = scoring === 'sets';
+  // Both sides typed but the server doesn't count it (e.g. 2-1 at best of 5).
+  const invalidScore =
+    bySets && score[0] !== null && score[1] !== null && !summary.finished && !summary.walkover;
 
   let status = <Badge>Pendiente</Badge>;
   if (summary.walkover) status = <Badge tone="tertiary">W.O.</Badge>;
@@ -139,11 +164,12 @@ export function ScoreCard({
               <th scope="col" className="pb-1 text-left font-medium">
                 Jugador
               </th>
-              {sets.map((_, setIndex) => (
-                <th key={setIndex} scope="col" className="px-0.5 pb-1 font-medium">
-                  S{setIndex + 1}
-                </th>
-              ))}
+              {!bySets &&
+                sets.map((_, setIndex) => (
+                  <th key={setIndex} scope="col" className="px-0.5 pb-1 font-medium">
+                    S{setIndex + 1}
+                  </th>
+                ))}
               <th scope="col" className="pb-1 pl-2 text-right font-medium">
                 Sets
               </th>
@@ -170,7 +196,7 @@ export function ScoreCard({
                       </span>
                     </span>
                   </th>
-                  {summary.walkover && (
+                  {summary.walkover && !bySets && (
                     <td colSpan={sets.length} className="px-1 py-1 text-center">
                       {isWinner ? (
                         <span className="text-xs font-medium whitespace-nowrap text-secondary-400">
@@ -184,6 +210,7 @@ export function ScoreCard({
                     </td>
                   )}
                   {!summary.walkover &&
+                    !bySets &&
                     sets.map((set, setIndex) => {
                       const disabled =
                         locked ||
@@ -214,13 +241,37 @@ export function ScoreCard({
                         </td>
                       );
                     })}
-                  <td
-                    className={`py-1 pl-2 text-right font-display text-xl font-bold tabular-nums ${
-                      isWinner ? 'text-white' : 'text-neutral-500'
-                    }`}
-                  >
-                    {summary.sets[side]}
-                  </td>
+                  {bySets && !summary.walkover ? (
+                    <td className="py-1 pl-2 text-right">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={score[side] ?? ''}
+                        disabled={locked}
+                        aria-label={`${player.name}, sets ganados`}
+                        onChange={(event) => {
+                          onScore(side === 0 ? 0 : 1, digitsValue(event.target.value));
+                        }}
+                        className={scoreInputClass(isWinner, invalidScore)}
+                      />
+                    </td>
+                  ) : (
+                    <td
+                      className={`py-1 pl-2 text-right font-display text-xl font-bold tabular-nums ${
+                        isWinner ? 'text-white' : 'text-neutral-500'
+                      }`}
+                    >
+                      {bySets && summary.walkover && (
+                        <span
+                          className={`mr-2 align-middle text-xs font-medium ${isWinner ? 'text-secondary-400' : 'text-tertiary-300'}`}
+                        >
+                          {isWinner ? 'Gana por W.O.' : 'No se presentó'}
+                        </span>
+                      )}
+                      {summary.sets[side]}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -228,6 +279,11 @@ export function ScoreCard({
         </table>
       </div>
 
+      {invalidScore && (
+        <p className="mt-2 text-xs text-red-300">
+          Ese marcador no termina el partido: uno de los dos debe llegar a los sets para ganar.
+        </p>
+      )}
       {lockedReason && <p className="mt-2 text-xs text-neutral-500">{lockedReason}</p>}
     </li>
   );

@@ -12,9 +12,7 @@ interface AddParticipantModalProps {
   players: Player[];
   /** Nr. the server assigns if none is given. */
   nextBib: number;
-  /** Places still free in the tournament. */
-  remaining: number;
-  /** Registers on the server; rejects with ApiError (e.g. Nr. taken, no places left). */
+  /** Registers on the server; rejects with ApiError (e.g. Nr. taken). */
   onAdd: (entry: NewPlayer) => Promise<Player>;
 }
 
@@ -26,7 +24,6 @@ export function AddParticipantModal({
   onClose,
   players,
   nextBib,
-  remaining,
   onAdd,
 }: AddParticipantModalProps) {
   const [form, setForm] = useState(EMPTY);
@@ -35,7 +32,6 @@ export function AddParticipantModal({
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const suggestedBib = nextBib;
-  const full = remaining <= 0;
 
   const set = (field: keyof typeof EMPTY) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
@@ -88,11 +84,7 @@ export function AddParticipantModal({
       open={open}
       onClose={onClose}
       title="Añadir jugador"
-      description={
-        full
-          ? 'Individual masculino · no quedan cupos.'
-          : `Individual masculino · ${remaining === 1 ? 'queda 1 cupo' : `quedan ${String(remaining)} cupos`}.`
-      }
+      description="Inscripción individual. No hay límite de cupos."
     >
       <form
         onSubmit={(event) => {
@@ -123,7 +115,6 @@ export function AddParticipantModal({
             placeholder="Carlos Silva"
             value={form.name}
             onChange={set('name')}
-            disabled={full}
           />
         </Field>
 
@@ -136,7 +127,6 @@ export function AddParticipantModal({
               placeholder="Club Universitario"
               value={form.delegation}
               onChange={set('delegation')}
-              disabled={full}
             />
           </Field>
           <Field
@@ -153,7 +143,6 @@ export function AddParticipantModal({
               aria-describedby="participant-bib-hint"
               value={form.bib}
               onChange={set('bib')}
-              disabled={full}
             />
           </Field>
           <Field
@@ -170,7 +159,6 @@ export function AddParticipantModal({
               aria-describedby="participant-ranking-hint"
               value={form.ranking}
               onChange={set('ranking')}
-              disabled={full}
             />
           </Field>
           <Field id="participant-email" label="Correo (opcional)">
@@ -181,7 +169,6 @@ export function AddParticipantModal({
               placeholder="jugador@correo.com"
               value={form.email}
               onChange={set('email')}
-              disabled={full}
             />
           </Field>
           <Field id="participant-phone" label="Teléfono (opcional)">
@@ -192,7 +179,6 @@ export function AddParticipantModal({
               placeholder="+57 300 000 0000"
               value={form.phone}
               onChange={set('phone')}
-              disabled={full}
             />
           </Field>
         </div>
@@ -207,15 +193,10 @@ export function AddParticipantModal({
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button
-            variant="outlined"
-            type="submit"
-            value="another"
-            disabled={full || remaining === 1 || saving}
-          >
+          <Button variant="outlined" type="submit" value="another" disabled={saving}>
             Añadir y crear otro
           </Button>
-          <Button type="submit" value="close" disabled={full || saving}>
+          <Button type="submit" value="close" disabled={saving}>
             Añadir jugador
           </Button>
         </div>

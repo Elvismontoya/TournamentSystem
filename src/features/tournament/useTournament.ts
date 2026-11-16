@@ -43,6 +43,8 @@ export interface Tournament {
     side: 0 | 1,
     value: number | null,
   ) => void;
+  /** Final score in sets (tournaments scored by sets only). */
+  updateScore: (groupIndex: number, matchIndex: number, side: 0 | 1, value: number | null) => void;
   setWalkover: (groupIndex: number, matchIndex: number, absent: 0 | 1 | null) => void;
   drawKnockout: () => void;
   moveKnockoutSlot: (position: number, slot: BracketSlot) => void;
@@ -53,7 +55,72 @@ export interface Tournament {
     side: 0 | 1,
     value: number | null,
   ) => void;
+  updateKnockoutScore: (
+    round: number,
+    matchIndex: number,
+    side: 0 | 1,
+    value: number | null,
+  ) => void;
   setKnockoutWalkover: (round: number, matchIndex: number, absent: 0 | 1 | null) => void;
+}
+
+/** One side of a final score changed (sets only), so typing feels instant. */
+function withScore(result: MatchResult, side: 0 | 1, value: number | null): MatchResult {
+  const score = result.score ?? [null, null];
+  return { ...result, score: side === 0 ? [value, score[1]] : [score[0], value] };
+}
+
+/** Applies `change` to one group match of the view. */
+function withGroupMatch(
+  view: TournamentView,
+  groupIndex: number,
+  matchIndex: number,
+  change: (result: MatchResult) => MatchResult,
+): TournamentView {
+  const { groupStage } = view;
+  if (!groupStage) return view;
+  return {
+    ...view,
+    groupStage: {
+      ...groupStage,
+      groups: groupStage.groups.map((group, gi) =>
+        gi !== groupIndex
+          ? group
+          : {
+              ...group,
+              matches: group.matches.map((match, mi) =>
+                mi !== matchIndex ? match : { ...match, result: change(match.result) },
+              ),
+            },
+      ),
+    },
+  };
+}
+
+/** Applies `change` to one knockout match of the view (match 1 of the last round = 3rd place). */
+function withKnockoutMatch(
+  view: TournamentView,
+  round: number,
+  matchIndex: number,
+  change: (result: MatchResult) => MatchResult,
+): TournamentView {
+  const { knockout } = view;
+  if (!knockout) return view;
+  const update = (match: KnockoutMatchView) => ({ ...match, result: change(match.result) });
+  if (knockout.thirdPlace && round === knockout.rounds.length - 1 && matchIndex === 1) {
+    return { ...view, knockout: { ...knockout, thirdPlace: update(knockout.thirdPlace) } };
+  }
+  return {
+    ...view,
+    knockout: {
+      ...knockout,
+      rounds: knockout.rounds.map((matches, ri) =>
+        ri !== round
+          ? matches
+          : matches.map((match, mi) => (mi !== matchIndex ? match : update(match))),
+      ),
+    },
+  };
 }
 
 export type TournamentState =
@@ -266,6 +333,17 @@ export function useTournament(tournamentId: string): TournamentState {
           ),
         );
       },
+      updateScore: (groupIndex, matchIndex, side, value) => {
+        fire(
+          mutate(
+            () => tournamentsApi.updateScore(id, groupIndex, matchIndex, side, value),
+            (current) =>
+              withGroupMatch(current, groupIndex, matchIndex, (result) =>
+                withScore(result, side, value),
+              ),
+          ),
+        );
+      },
       setWalkover: (groupIndex, matchIndex, absent) => {
         fire(mutate(() => tournamentsApi.setWalkover(id, groupIndex, matchIndex, absent)));
       },
@@ -280,6 +358,17 @@ export function useTournament(tournamentId: string): TournamentState {
           mutate(
             () => tournamentsApi.updateKnockoutSet(id, round, matchIndex, setIndex, side, value),
             (current) => withKnockoutSet(current, round, matchIndex, setIndex, side, value),
+          ),
+        );
+      },
+      updateKnockoutScore: (round, matchIndex, side, value) => {
+        fire(
+          mutate(
+            () => tournamentsApi.updateKnockoutScore(id, round, matchIndex, side, value),
+            (current) =>
+              withKnockoutMatch(current, round, matchIndex, (result) =>
+                withScore(result, side, value),
+              ),
           ),
         );
       },

@@ -8,12 +8,18 @@ import type {
   Player,
   PlayerUpdate,
   SettingsUpdate,
+  TournamentSummary,
   TournamentView,
 } from './types.ts';
 
 const base = (id: string) => `/torneos/${encodeURIComponent(id)}`;
 
 export const tournamentsApi = {
+  list: () => request<TournamentSummary[]>('GET', '/torneos'),
+
+  /** Creates a tournament with every setting of the creation wizard. */
+  create: (settings: SettingsUpdate) => request<TournamentView>('POST', '/torneos', settings),
+
   get: (id: string) => request<TournamentView>('GET', base(id)),
 
   remove: (id: string) => request<null>('DELETE', base(id)),
@@ -69,6 +75,20 @@ export const tournamentsApi = {
       { side, value },
     ),
 
+  /** Final score in sets (tournaments scored by sets only). */
+  updateScore: (
+    id: string,
+    groupIndex: number,
+    matchIndex: number,
+    side: 0 | 1,
+    value: number | null,
+  ) =>
+    request<TournamentView>(
+      'PUT',
+      `${base(id)}/grupos/${String(groupIndex)}/partidos/${String(matchIndex)}/marcador`,
+      { side, value },
+    ),
+
   setWalkover: (id: string, groupIndex: number, matchIndex: number, absent: 0 | 1 | null) =>
     request<TournamentView>(
       'PUT',
@@ -92,6 +112,19 @@ export const tournamentsApi = {
     request<TournamentView>(
       'PUT',
       `${base(id)}/llaves/rondas/${String(round)}/partidos/${String(matchIndex)}/sets/${String(setIndex)}`,
+      { side, value },
+    ),
+
+  updateKnockoutScore: (
+    id: string,
+    round: number,
+    matchIndex: number,
+    side: 0 | 1,
+    value: number | null,
+  ) =>
+    request<TournamentView>(
+      'PUT',
+      `${base(id)}/llaves/rondas/${String(round)}/partidos/${String(matchIndex)}/marcador`,
       { side, value },
     ),
 

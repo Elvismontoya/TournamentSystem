@@ -6,6 +6,8 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   description?: string;
+  /** "lg" for long forms (e.g. the creation wizard). */
+  size?: 'md' | 'lg';
   children: ReactNode;
 }
 
@@ -13,7 +15,7 @@ interface ModalProps {
  * Popup built on the native <dialog>: closes with Esc or a click on the backdrop,
  * and keeps keyboard focus inside while open.
  */
-export function Modal({ open, onClose, title, description, children }: ModalProps) {
+export function Modal({ open, onClose, title, description, size = 'md', children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -35,7 +37,7 @@ export function Modal({ open, onClose, title, description, children }: ModalProp
         // Only the backdrop area has the <dialog> itself as target.
         if (event.target === event.currentTarget) onClose();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-xl rounded-2xl border border-neutral-800 bg-neutral-900 p-0 text-neutral-200 shadow-2xl backdrop:bg-black/70"
+      className={`m-auto w-[calc(100%-2rem)] ${size === 'lg' ? 'max-w-3xl' : 'max-w-xl'} max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-neutral-800 bg-neutral-900 p-0 text-neutral-200 shadow-2xl backdrop:bg-black/70`}
     >
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">

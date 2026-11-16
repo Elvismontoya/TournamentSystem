@@ -39,8 +39,7 @@ type OpenModal =
 export function ParticipantsPage() {
   const { view, addPlayer, updatePlayer, removePlayer, previewImport, importPlayers } =
     useOutletContext<Tournament>();
-  const { players, seedIds, settings, groupStage, nextBib } = view;
-  const CAPACITY = settings.capacity;
+  const { players, seedIds, groupStage, nextBib } = view;
   // The top players by ranking head one group each (decided by the server).
   const SEEDS = seedIds.length;
   const [openModal, setOpenModal] = useState<OpenModal>(null);
@@ -55,8 +54,6 @@ export function ParticipantsPage() {
       ?.name ?? null;
 
   const registered = players.length;
-  const remaining = CAPACITY - registered;
-  const full = remaining <= 0;
   // Registered after the group draw: they wait in "Sin grupo" until placed.
   const withoutGroup = groupStage?.withoutGroup ?? [];
 
@@ -64,12 +61,10 @@ export function ParticipantsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Participantes"
-        text={`${String(registered)} de ${String(CAPACITY)} jugadores inscritos.`}
+        text={`${String(registered)} ${registered === 1 ? 'jugador inscrito' : 'jugadores inscritos'}.`}
       >
         <Button
           variant="outlined"
-          disabled={full}
-          title={full ? 'No quedan cupos' : undefined}
           onClick={() => {
             setOpenModal('import');
           }}
@@ -78,8 +73,6 @@ export function ParticipantsPage() {
           Importar lista
         </Button>
         <Button
-          disabled={full}
-          title={full ? 'No quedan cupos' : undefined}
           onClick={() => {
             setOpenModal('add');
           }}
@@ -89,28 +82,16 @@ export function ParticipantsPage() {
         </Button>
       </SectionHeader>
 
-      {/* Capacity + registration link */}
+      {/* Registered count (no limit of places) + registration link */}
       <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-        <div className="flex flex-col justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-neutral-300">Cupos ocupados</span>
-            <span className="font-display font-medium text-white tabular-nums">
-              {registered} / {CAPACITY}
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4 text-sm">
+          <span className="text-neutral-300">Jugadores inscritos</span>
+          <span className="flex items-baseline gap-2">
+            <span className="font-display text-2xl font-semibold text-white tabular-nums">
+              {registered}
             </span>
-          </div>
-          <div
-            className="h-1.5 overflow-hidden rounded-full bg-neutral-800"
-            role="progressbar"
-            aria-label="Cupos ocupados"
-            aria-valuenow={registered}
-            aria-valuemin={0}
-            aria-valuemax={CAPACITY}
-          >
-            <div
-              className="h-full rounded-full bg-primary-500 transition-[width]"
-              style={{ width: `${String(Math.min(100, (registered / CAPACITY) * 100))}%` }}
-            />
-          </div>
+            <span className="text-xs text-neutral-500">sin límite de cupos</span>
+          </span>
         </div>
         <div className="flex items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4">
           <Link2 className="size-5 shrink-0 text-secondary-400" aria-hidden="true" />
@@ -291,7 +272,6 @@ export function ParticipantsPage() {
           onClose={closeModal}
           players={players}
           nextBib={nextBib}
-          remaining={remaining}
           onAdd={addPlayer}
         />
       )}
@@ -315,7 +295,6 @@ export function ParticipantsPage() {
         <ImportParticipantsModal
           open
           onClose={closeModal}
-          remaining={remaining}
           onPreview={previewImport}
           onImport={importPlayers}
         />
