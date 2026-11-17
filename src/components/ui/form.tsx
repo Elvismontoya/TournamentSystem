@@ -6,7 +6,7 @@ import type {
 } from 'react';
 
 const controlClass =
-  'mt-1 block w-full rounded-lg border border-neutral-700 bg-neutral-850 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30 focus:outline-none';
+  'mt-1 block w-full rounded-lg border border-neutral-700 bg-neutral-850 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30 focus:outline-none aria-invalid:border-red-500 aria-invalid:focus:ring-red-500/30';
 
 /** Red asterisk after the label of a required field. */
 export function RequiredMark() {
@@ -24,10 +24,15 @@ interface FieldProps {
   required?: boolean;
   /** Optional helper text shown under the control. */
   hint?: string;
+  /**
+   * What is wrong with the value, shown in red under the control (instead of the hint).
+   * Give the control aria-invalid and aria-describedby `${id}-error` too.
+   */
+  error?: string;
   children: ReactNode;
 }
 
-export function Field({ id, label, required, hint, children }: FieldProps) {
+export function Field({ id, label, required, hint, error, children }: FieldProps) {
   return (
     <div>
       <label htmlFor={id} className="block font-display text-sm font-medium text-neutral-300">
@@ -35,10 +40,16 @@ export function Field({ id, label, required, hint, children }: FieldProps) {
         {required && <RequiredMark />}
       </label>
       {children}
-      {hint && (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-neutral-500">
-          {hint}
+      {error ? (
+        <p id={`${id}-error`} className="mt-1 text-xs font-medium text-red-300">
+          {error}
         </p>
+      ) : (
+        hint && (
+          <p id={`${id}-hint`} className="mt-1 text-xs text-neutral-500">
+            {hint}
+          </p>
+        )
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import { LoaderCircle, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError } from '../../api/client.ts';
 import { Modal } from '../../components/Modal.tsx';
+import { useToast } from '../../components/toast/toastContext.ts';
 import { Button } from '../../components/ui/Button.tsx';
 
 interface RemoveAllParticipantsModalProps {
@@ -27,18 +28,22 @@ export function RemoveAllParticipantsModal({
   onClose,
   onRemoveAll,
 }: RemoveAllParticipantsModalProps) {
+  const toast = useToast();
   const [removing, setRemoving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const confirm = async () => {
     setRemoving(true);
-    setError(null);
     try {
       await onRemoveAll();
+      toast.success(
+        'Jugadores eliminados',
+        `Se eliminaron los ${String(registered)} inscritos${drawn ? ' y los sorteos' : ''}.`,
+      );
       onClose();
     } catch (failure) {
-      setError(
-        failure instanceof ApiError ? failure.message : 'No se pudo eliminar a los jugadores.',
+      toast.error(
+        'No se pudo eliminar a los jugadores',
+        failure instanceof ApiError ? failure.message : 'Ocurrió un error inesperado.',
       );
       setRemoving(false);
     }
@@ -72,11 +77,6 @@ export function RemoveAllParticipantsModal({
         categories > 1 ? ' de todas las categorías' : ''
       }${drawn ? ', los sorteos de grupos y las llaves' : ''}. No se puede deshacer.`}
     >
-      {error && (
-        <p role="alert" className="mb-4 text-sm text-red-300">
-          {error}
-        </p>
-      )}
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outlined" disabled={removing} onClick={onClose}>
           Cancelar

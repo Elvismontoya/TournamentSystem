@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ApiError } from '../../api/client.ts';
 import type { Player } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
+import { useToast } from '../../components/toast/toastContext.ts';
 import { Button } from '../../components/ui/Button.tsx';
 
 interface RemoveParticipantModalProps {
@@ -25,17 +26,23 @@ export function RemoveParticipantModal({
   onClose,
   onRemove,
 }: RemoveParticipantModalProps) {
+  const toast = useToast();
   const [removing, setRemoving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const confirm = async () => {
     setRemoving(true);
-    setError(null);
     try {
       await onRemove(player.id);
+      toast.success(
+        'Jugador eliminado',
+        `${player.name} (Nr. ${String(player.bib)}) ya no está inscrito.`,
+      );
       onClose();
     } catch (failure) {
-      setError(failure instanceof ApiError ? failure.message : 'No se pudo eliminar al jugador.');
+      toast.error(
+        'No se pudo eliminar al jugador',
+        failure instanceof ApiError ? failure.message : 'Ocurrió un error inesperado.',
+      );
       setRemoving(false);
     }
   };
@@ -74,11 +81,6 @@ export function RemoveParticipantModal({
       title="¿Eliminar jugador?"
       description={`${player.name} (Nr. ${String(player.bib)}) dejará de estar inscrito y se libera su cupo.`}
     >
-      {error && (
-        <p role="alert" className="mb-4 text-sm text-red-300">
-          {error}
-        </p>
-      )}
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outlined" disabled={removing} onClick={onClose}>
           Cancelar
