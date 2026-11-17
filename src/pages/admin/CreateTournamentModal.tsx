@@ -14,6 +14,7 @@ import { ApiError } from '../../api/client.ts';
 import { tournamentsApi } from '../../api/tournaments.ts';
 import type { Settings, TournamentSummary, TournamentData } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
+import { useToast } from '../../components/toast/toastContext.ts';
 import { Button } from '../../components/ui/Button.tsx';
 import { RequiredMark } from '../../components/ui/form.tsx';
 import {
@@ -215,6 +216,7 @@ const selectClass =
 
 export function CreateTournamentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<Mode>('scratch');
   const [values, setValues] = useState<SettingsFormValues>(newTournamentValues);
@@ -321,10 +323,19 @@ export function CreateTournamentModal({ open, onClose }: { open: boolean; onClos
       const created = await tournamentsApi.create(update);
       setCreating(false);
       close();
+      toast.success(
+        'Torneo creado con éxito',
+        `«${created.name}» está listo: ahora inscribe a los jugadores.`,
+      );
       void navigate(`/torneos/${created.id}`);
     } catch (failure) {
-      setError(failure instanceof ApiError ? failure.message : 'No se pudo crear el torneo.');
       setCreating(false);
+      toast.error(
+        'No se pudo crear el torneo',
+        failure instanceof ApiError
+          ? failure.message
+          : 'Ocurrió un error inesperado. Inténtalo de nuevo.',
+      );
     }
   };
 
