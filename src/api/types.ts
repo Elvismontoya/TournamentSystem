@@ -3,6 +3,9 @@
 
 export type Gender = 'F' | 'M';
 
+/** Division by gender ("rama"): men's, women's, or mixed (both together). */
+export type Division = 'Masculino' | 'Femenino' | 'Mixto';
+
 /**
  * What each player plays. Doubles, mixed doubles and teams hold the code shared by the
  * partners/teammates ("DF1", "DX2", "201"); null = doesn't play it.
@@ -230,6 +233,8 @@ export interface Settings {
   modalities: string[];
   /** "Sub 11", "Mayores"… */
   categories: string[];
+  /** Masculino and/or Femenino, or Mixto alone. */
+  divisions: Division[];
   /** ISO dates (YYYY-MM-DD), or null if not set. */
   startDate: string | null;
   endDate: string | null;
@@ -268,6 +273,7 @@ export interface SettingsUpdate {
   format: string;
   modalities: string[];
   categories: string[];
+  divisions: Division[];
   startDate: string | null;
   endDate: string | null;
   location: string;
@@ -306,11 +312,16 @@ export interface RankingEntry {
   reached: string;
 }
 
-/** The competition of one category (categories never mix): draw, matches, bracket, ranking. */
+/**
+ * One competition: a category in a division ("Sub 19 · Femenino"). Competitions never mix:
+ * each has its own draw, matches, bracket and ranking.
+ */
 export interface CategoryView {
-  /** Category name ("Sub 13"…), as in the settings. */
+  /** "Sub 19 · Femenino": the competition's key (used in the routes). */
   name: string;
-  /** Players registered in this category. */
+  category: string;
+  division: Division;
+  /** Players of this competition. */
   registered: number;
   /** Seeded players (top of the ranking, one per group), in seed order. */
   seedIds: string[];
@@ -329,7 +340,7 @@ export interface TournamentData {
   players: Player[];
   /** Nr. a new player gets if none is given (unique in the whole tournament). */
   nextBib: number;
-  /** One competition per category, in the order of the settings. */
+  /** One competition per category and division. */
   categories: CategoryView[];
 }
 
@@ -341,9 +352,11 @@ export interface TournamentView {
   id: string;
   name: string;
   settings: Settings;
-  /** The category shown. */
+  /** Key of the competition shown ("Sub 19 · Femenino"). */
   category: string;
-  /** Players of this category, highest ranking first. */
+  /** Its category and division. */
+  competition: { category: string; division: Division };
+  /** Players of this competition, highest ranking first. */
   players: Player[];
   /** Players of every category (e.g. to check a Nr. is free). */
   allPlayers: Player[];

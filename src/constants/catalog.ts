@@ -3,7 +3,7 @@
 // each entry already has the shape of a row: an id, the name that gets saved, and whether
 // it can be chosen yet. Only what the platform supports today is available.
 
-import type { Gender } from '../api/types.ts';
+import type { Division, Gender } from '../api/types.ts';
 
 export interface CatalogItem {
   id: string;
@@ -31,6 +31,16 @@ export const MODALITIES: CatalogItem[] = [
   { id: 'dobles', name: 'Dobles', available: false },
   { id: 'dobles-mixtos', name: 'Dobles mixtos', available: false },
   { id: 'equipos', name: 'Equipos', available: false },
+];
+
+/**
+ * Divisions by gender ("rama"). Masculino and Femenino can go together (each one plays
+ * apart); Mixto goes alone (men and women play together).
+ */
+export const DIVISIONS: { value: Division; label: string; text: string }[] = [
+  { value: 'Masculino', label: 'Masculino', text: 'Solo hombres' },
+  { value: 'Femenino', label: 'Femenino', text: 'Solo mujeres' },
+  { value: 'Mixto', label: 'Mixto', text: 'Hombres y mujeres juntos' },
 ];
 
 export const GENDERS: { value: Gender; label: string }[] = [

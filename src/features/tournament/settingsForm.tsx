@@ -1,9 +1,10 @@
 import { Info, Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { Scoring } from '../../api/types.ts';
+import type { Division, Scoring } from '../../api/types.ts';
 import { Field, Input, RequiredMark, Select } from '../../components/ui/form.tsx';
 import {
   CATEGORIES,
+  DIVISIONS,
   FORMATS,
   MODALITIES,
   SPORTS,
@@ -51,12 +52,15 @@ function CheckboxGroup({
   selected,
   onChange,
   hint,
+  allowAll = true,
 }: {
   legend: string;
   items: CatalogItem[];
   selected: string[];
   onChange: (selected: string[]) => void;
   hint?: string;
+  /** Offer "Marcar todas" (when more than two can be chosen). */
+  allowAll?: boolean;
 }) {
   // Keep the catalog order whatever the click order.
   const toggle = (name: string, checked: boolean) => {
@@ -75,7 +79,7 @@ function CheckboxGroup({
           {legend}
           <RequiredMark />
         </legend>
-        {allAvailable.length > 2 && (
+        {allowAll && allAvailable.length > 2 && (
           <button
             type="button"
             onClick={() => {
@@ -181,7 +185,26 @@ export function GeneralFields({
         onChange={(selected) => {
           set('categories', selected);
         }}
-        hint="Marca todas las que juega el torneo."
+        hint="Marca todas las que juega el torneo: cada una juega aparte."
+      />
+      <CheckboxGroup
+        legend="Rama"
+        items={DIVISIONS.map((division) => ({
+          id: division.value,
+          name: division.value,
+          available: true,
+        }))}
+        selected={values.divisions}
+        allowAll={false}
+        onChange={(selected) => {
+          // Mixto goes alone: choosing it clears the others, and the others clear it.
+          const added = selected.find((name) => !values.divisions.includes(name as Division));
+          const next = (
+            added === 'Mixto' ? ['Mixto'] : selected.filter((name) => name !== 'Mixto')
+          ) as Division[];
+          set('divisions', next);
+        }}
+        hint="Masculino y femenino juegan aparte; en mixto juegan hombres y mujeres juntos."
       />
       <div className="grid gap-5 sm:grid-cols-2">
         <Field id={id('start')} label="Fecha de inicio" required>

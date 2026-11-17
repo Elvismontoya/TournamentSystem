@@ -58,9 +58,15 @@ export function tiebreakersFor(scoring: Settings['scoring']): string[] {
   ];
 }
 
-/** "Individual · Sub 11, Sub 13". */
-export function modalitiesAndCategoriesText({ modalities, categories }: Settings): string {
-  return [modalities.join(', '), categories.join(', ')].filter(Boolean).join(' · ');
+/** "Individual · Sub 11, Sub 13 · Masculino y Femenino". */
+export function modalitiesAndCategoriesText({
+  modalities,
+  categories,
+  divisions,
+}: Settings): string {
+  return [modalities.join(', '), categories.join(', '), divisions.join(' y ')]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 const dateFormat = new Intl.DateTimeFormat('es', {

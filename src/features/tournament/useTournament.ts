@@ -23,10 +23,13 @@ import type {
  */
 export interface Tournament {
   view: TournamentView;
-  /** Every category of the tournament (each one is its own competition). */
-  categories: string[];
-  /** Shows another category in every section. */
-  selectCategory: (category: string) => void;
+  /**
+   * Competitions (a category in a division) with registered players, each with how many: each
+   * one plays apart. While nobody is registered, all of them.
+   */
+  competitions: { name: string; registered: number }[];
+  /** Shows another competition in every section. */
+  selectCategory: (competition: string) => void;
   /** Message of the last action that failed (shown in a banner), or null. */
   actionError: string | null;
   dismissActionError: () => void;
@@ -76,7 +79,7 @@ export interface Tournament {
   setKnockoutWalkover: (round: number, matchIndex: number, absent: 0 | 1 | null) => void;
 }
 
-const EMPTY_CATEGORY: Omit<CategoryView, 'name'> = {
+const EMPTY_CATEGORY: Omit<CategoryView, 'name' | 'category' | 'division'> = {
   registered: 0,
   seedIds: [],
   groupStage: null,
@@ -84,15 +87,29 @@ const EMPTY_CATEGORY: Omit<CategoryView, 'name'> = {
   ranking: null,
 };
 
-/** The view the pages show: the tournament with the competition of one category. */
-function viewOf(data: TournamentData, category: string): TournamentView {
-  const competition = data.categories.find((entry) => entry.name === category) ?? EMPTY_CATEGORY;
+/** A player plays in a competition: same category, and same gender unless it is mixed. */
+function playsIn(player: Player, competition: Pick<CategoryView, 'category' | 'division'>) {
+  if (player.category !== competition.category) return false;
+  if (competition.division === 'Mixto') return true;
+  return player.gender === (competition.division === 'Femenino' ? 'F' : 'M');
+}
+
+/** The view the pages show: the tournament with one competition (category + division). */
+function viewOf(data: TournamentData, key: string): TournamentView {
+  const found = data.categories.find((entry) => entry.name === key);
+  const competition = found ?? {
+    ...EMPTY_CATEGORY,
+    name: key,
+    category: '',
+    division: 'Mixto' as const,
+  };
   return {
     id: data.id,
     name: data.name,
     settings: data.settings,
-    category,
-    players: data.players.filter((player) => player.category === category),
+    category: key,
+    competition: { category: competition.category, division: competition.division },
+    players: found ? data.players.filter((player) => playsIn(player, found)) : [],
     allPlayers: data.players,
     nextBib: data.nextBib,
     seedIds: competition.seedIds,
@@ -101,7 +118,6 @@ function viewOf(data: TournamentData, category: string): TournamentView {
     ranking: competition.ranking,
   };
 }
-
 /** Applies `change` to one category's competition (for instant local updates). */
 function onCategory(
   data: TournamentData,
@@ -279,10 +295,14 @@ export function useTournament(tournamentId: string): TournamentState {
   if (!data) return { status: 'loading' };
 
   const id = tournamentId;
-  const categories = data.settings.categories;
-  // The chosen category, or the first one (also when the chosen one was taken out).
-  const category =
-    chosen !== null && categories.includes(chosen) ? chosen : (categories.at(0) ?? '');
+  // Only competitions with registered players are offered (all of them while nobody is
+  // registered). The chosen one, or the first offered (also when the chosen one empties).
+  const withPlayers = data.categories.filter((competition) => competition.registered > 0);
+  const offered = (withPlayers.length > 0 ? withPlayers : data.categories).map(
+    ({ name, registered }) => ({ name, registered }),
+  );
+  const keys = offered.map((competition) => competition.name);
+  const category = chosen !== null && keys.includes(chosen) ? chosen : (keys.at(0) ?? '');
   const local =
     (change: (competition: CategoryView) => CategoryView) => (current: TournamentData) =>
       onCategory(current, category, change);
@@ -291,7 +311,7 @@ export function useTournament(tournamentId: string): TournamentState {
     status: 'ready',
     tournament: {
       view: viewOf(data, category),
-      categories,
+      competitions: offered,
       selectCategory: setChosen,
       actionError,
       dismissActionError: () => {

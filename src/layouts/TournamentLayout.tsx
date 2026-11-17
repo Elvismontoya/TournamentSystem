@@ -123,20 +123,17 @@ export function TournamentLayout() {
         </div>
       </header>
 
-      {/* Each category plays its own competition: every section shows the chosen one. */}
+      {/* Each category and division plays its own competition: every section shows the chosen one. */}
       <div
         role="tablist"
-        aria-label="Categoría"
+        aria-label="Competencia"
         className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5"
       >
         <span className="px-1 font-display text-xs font-semibold tracking-wider text-neutral-500 uppercase">
-          Categoría
+          Competencia
         </span>
-        {tournament.categories.map((category) => {
+        {tournament.competitions.map(({ name: category, registered }) => {
           const selected = category === tournament.view.category;
-          const registered = tournament.view.allPlayers.filter(
-            (player) => player.category === category,
-          ).length;
           return (
             <button
               key={category}

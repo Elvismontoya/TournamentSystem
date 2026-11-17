@@ -1,7 +1,7 @@
 import { CircleCheck } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { ApiError } from '../../api/client.ts';
-import type { NewPlayer, Player } from '../../api/types.ts';
+import type { Gender, NewPlayer, Player } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { Field, Input, Select } from '../../components/ui/form.tsx';
@@ -14,6 +14,8 @@ interface AddParticipantModalProps {
   categories: string[];
   /** Category chosen at first (the one shown in the dashboard). */
   defaultCategory: string;
+  /** Gender chosen at first (from the division shown; null in a mixed one). */
+  defaultGender: Gender | null;
   /** Registers on the server (the Nr. is assigned there); rejects with ApiError. */
   onAdd: (entry: NewPlayer) => Promise<Player>;
 }
@@ -24,13 +26,14 @@ export function AddParticipantModal({
   onClose,
   categories,
   defaultCategory,
+  defaultGender,
   onAdd,
 }: AddParticipantModalProps) {
   const empty = {
     name: '',
     delegation: '',
     ranking: '',
-    gender: '',
+    gender: GENDERS.find((option) => option.value === defaultGender)?.label ?? '',
     category: defaultCategory,
   };
   const [form, setForm] = useState(empty);

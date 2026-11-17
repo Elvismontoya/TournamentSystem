@@ -280,7 +280,14 @@ export function ParticipantsPage() {
           open
           onClose={closeModal}
           categories={settings.categories}
-          defaultCategory={category}
+          defaultCategory={view.competition.category}
+          defaultGender={
+            view.competition.division === 'Femenino'
+              ? 'F'
+              : view.competition.division === 'Masculino'
+                ? 'M'
+                : null
+          }
           onAdd={addPlayer}
         />
       )}

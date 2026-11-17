@@ -2,7 +2,7 @@
 // current values, client-side checks and conversion to the API body. The fields are in
 // settingsForm.tsx.
 
-import type { Scoring, SettingsUpdate, TournamentView } from '../../api/types.ts';
+import type { Division, Scoring, SettingsUpdate, TournamentView } from '../../api/types.ts';
 import { FORMATS, MODALITIES, SPORTS, type CatalogItem } from '../../constants/catalog.ts';
 /** Form values: numbers typed by hand stay as text until saving. */
 export interface SettingsFormValues {
@@ -11,6 +11,7 @@ export interface SettingsFormValues {
   format: string;
   modalities: string[];
   categories: string[];
+  divisions: Division[];
   startDate: string;
   endDate: string;
   location: string;
@@ -63,6 +64,7 @@ export function newTournamentValues(): SettingsFormValues {
     format: firstAvailable(FORMATS),
     modalities: [firstAvailable(MODALITIES)],
     categories: [],
+    divisions: ['Masculino', 'Femenino'],
     startDate: '',
     endDate: '',
     location: '',
@@ -92,6 +94,7 @@ export function formValuesOf({
     format: settings.format,
     modalities: settings.modalities,
     categories: settings.categories,
+    divisions: settings.divisions,
     startDate: settings.startDate ?? '',
     endDate: settings.endDate ?? '',
     location: settings.location,
@@ -123,6 +126,7 @@ export function withCopiedRules(
     name: general.name,
     modalities: general.modalities,
     categories: general.categories,
+    divisions: general.divisions,
     startDate: general.startDate,
     endDate: general.endDate,
     location: general.location,
@@ -136,6 +140,7 @@ export function generalError(values: SettingsFormValues): string | null {
   if (values.format === '') return 'Elige el formato.';
   if (values.modalities.length === 0) return 'Elige al menos una modalidad.';
   if (values.categories.length === 0) return 'Elige al menos una categoría.';
+  if (values.divisions.length === 0) return 'Elige la rama: Masculino, Femenino o Mixto.';
   if (values.startDate === '') return 'Elige la fecha de inicio.';
   if (values.endDate !== '' && values.endDate < values.startDate) {
     return 'La fecha de fin no puede ser anterior a la de inicio.';
@@ -159,6 +164,7 @@ export function settingsUpdateOf(values: SettingsFormValues): SettingsUpdate {
     format: values.format,
     modalities: values.modalities,
     categories: values.categories,
+    divisions: values.divisions,
     startDate: values.startDate || null,
     endDate: values.endDate || null,
     location: values.location,
