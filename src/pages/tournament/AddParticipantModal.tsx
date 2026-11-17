@@ -1,8 +1,9 @@
-import { CircleCheck } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { ApiError } from '../../api/client.ts';
 import type { Gender, NewPlayer, Player } from '../../api/types.ts';
 import { Modal } from '../../components/Modal.tsx';
+import { useToast } from '../../components/toast/toastContext.ts';
 import { Button } from '../../components/ui/Button.tsx';
 import { Field, Input, Select } from '../../components/ui/form.tsx';
 import { GENDERS } from '../../constants/catalog.ts';
@@ -20,6 +21,26 @@ interface AddParticipantModalProps {
   onAdd: (entry: NewPlayer) => Promise<Player>;
 }
 
+type FormField = 'name' | 'delegation' | 'ranking' | 'gender' | 'category';
+type FormValues = Record<FormField, string>;
+type FormErrors = Partial<Record<FormField, string>>;
+
+/** What's wrong with each field (empty when everything is valid). */
+function validate(form: FormValues): FormErrors {
+  const errors: FormErrors = {};
+  if (form.name.trim() === '') errors.name = 'Escribe el nombre del jugador.';
+  else if (form.name.trim().length < 3) errors.name = 'El nombre es muy corto.';
+  if (!GENDERS.some((option) => option.label === form.gender)) errors.gender = 'Elige el género.';
+  if (form.category === '') errors.category = 'Elige la categoría.';
+  if (form.ranking.trim() !== '') {
+    const ranking = Number(form.ranking);
+    if (!Number.isInteger(ranking) || ranking < 0) {
+      errors.ranking = 'Debe ser un número entero (0 o más), o déjalo vacío.';
+    }
+  }
+  return errors;
+}
+
 /** Registers one player by hand, in the individual event (the only one for now). */
 export function AddParticipantModal({
   open,
@@ -29,7 +50,8 @@ export function AddParticipantModal({
   defaultGender,
   onAdd,
 }: AddParticipantModalProps) {
-  const empty = {
+  const toast = useToast();
+  const empty: FormValues = {
     name: '',
     delegation: '',
     ranking: '',
@@ -37,59 +59,63 @@ export function AddParticipantModal({
     category: defaultCategory,
   };
   const [form, setForm] = useState(empty);
-  const [error, setError] = useState<string | null>(null);
-  const [lastAdded, setLastAdded] = useState<Player | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const set = (field: keyof typeof empty) => (event: { target: { value: string } }) => {
+  const set = (field: FormField) => (event: { target: { value: string } }) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
-    setError(null);
+    // The field's message goes away as soon as it is changed.
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  };
+
+  /** Props that tie a control to its field's error message. */
+  const invalid = (field: FormField, id: string) =>
+    errors[field] ? { 'aria-invalid': true, 'aria-describedby': `${id}-error` } : {};
+
+  const close = () => {
+    if (saving) return;
+    setErrors({});
+    onClose();
   };
 
   const submit = async (another: boolean) => {
-    const name = form.name.trim();
-    if (name === '') {
-      setError('Escribe el nombre del jugador.');
-      return;
-    }
-    const gender = GENDERS.find((option) => option.label === form.gender)?.value;
-    if (!gender) {
-      setError('Elige el género.');
-      return;
-    }
-    if (form.category === '') {
-      setError('Elige la categoría.');
-      return;
-    }
-    const ranking = form.ranking.trim() === '' ? null : Number(form.ranking);
-    if (ranking !== null && (!Number.isInteger(ranking) || ranking < 0)) {
-      setError('El ranking debe ser un número entero (0 o más).');
+    const found = validate(form);
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      toast.error('Revisa los datos', 'Hay campos con errores (marcados en rojo).');
       return;
     }
     setSaving(true);
     let added: Player;
     try {
       added = await onAdd({
-        name,
+        name: form.name.trim(),
         delegation: form.delegation.trim(),
-        ranking,
-        gender,
+        ranking: form.ranking.trim() === '' ? null : Number(form.ranking),
+        gender: GENDERS.find((option) => option.label === form.gender)?.value ?? null,
         category: form.category,
         individual: true,
       });
     } catch (failure) {
-      setError(failure instanceof ApiError ? failure.message : 'No se pudo inscribir.');
+      toast.error(
+        'No se pudo inscribir al jugador',
+        failure instanceof ApiError ? failure.message : 'Ocurrió un error inesperado.',
+      );
       return;
     } finally {
       setSaving(false);
     }
+    toast.success(
+      'Jugador inscrito',
+      `${added.name} quedó inscrito con el Nr. ${String(added.bib)} (${form.category}).`,
+    );
     if (another) {
       // Keep league, gender and category: the next player is often from the same list.
       setForm((current) => ({ ...current, name: '', ranking: '' }));
-      setLastAdded(added);
       nameRef.current?.focus();
     } else {
+      setForm(empty);
       onClose();
     }
   };
@@ -97,7 +123,7 @@ export function AddParticipantModal({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title="Añadir jugador"
       description="Individual. Los campos con * son obligatorios; el Nr. se asigna solo."
     >
@@ -110,17 +136,7 @@ export function AddParticipantModal({
         className="space-y-5"
         noValidate
       >
-        {lastAdded && (
-          <p
-            role="status"
-            className="flex items-center gap-2 rounded-lg border border-secondary-500/30 bg-secondary-500/10 px-3 py-2 text-sm text-secondary-300"
-          >
-            <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
-            {lastAdded.name} inscrito con el Nr. {lastAdded.bib}.
-          </p>
-        )}
-
-        <Field id="participant-name" label="Nombre completo" required>
+        <Field id="participant-name" label="Nombre completo" required error={errors.name}>
           <Input
             ref={nameRef}
             id="participant-name"
@@ -130,6 +146,7 @@ export function AddParticipantModal({
             placeholder="Carlos Silva"
             value={form.name}
             onChange={set('name')}
+            {...invalid('name', 'participant-name')}
           />
         </Field>
 
@@ -144,26 +161,29 @@ export function AddParticipantModal({
               onChange={set('delegation')}
             />
           </Field>
-          <Field id="participant-gender" label="Género" required>
+          <Field id="participant-gender" label="Género" required error={errors.gender}>
             <Select
               id="participant-gender"
               options={GENDERS.map((option) => option.label)}
               value={form.gender}
               onChange={set('gender')}
+              {...invalid('gender', 'participant-gender')}
             />
           </Field>
-          <Field id="participant-category" label="Categoría" required>
+          <Field id="participant-category" label="Categoría" required error={errors.category}>
             <Select
               id="participant-category"
               options={categories}
               value={form.category}
               onChange={set('category')}
+              {...invalid('category', 'participant-category')}
             />
           </Field>
           <Field
             id="participant-ranking"
             label="Puntos de ranking"
             hint="Define su lugar como cabeza de serie."
+            error={errors.ranking}
           >
             <Input
               id="participant-ranking"
@@ -174,24 +194,20 @@ export function AddParticipantModal({
               aria-describedby="participant-ranking-hint"
               value={form.ranking}
               onChange={set('ranking')}
+              {...invalid('ranking', 'participant-ranking')}
             />
           </Field>
         </div>
 
-        {error && (
-          <p role="alert" className="text-sm text-red-300">
-            {error}
-          </p>
-        )}
-
         <div className="flex flex-wrap justify-end gap-3 pt-2">
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={close} disabled={saving}>
             Cancelar
           </Button>
           <Button variant="outlined" type="submit" value="another" disabled={saving}>
             Añadir y crear otro
           </Button>
           <Button type="submit" value="close" disabled={saving}>
+            {saving && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
             Añadir jugador
           </Button>
         </div>
