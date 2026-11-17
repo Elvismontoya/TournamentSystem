@@ -137,9 +137,7 @@ export function OverviewPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Champion, once the tournament is over (final and 3rd place decided) */}
-      {view.knockout?.finished && view.knockout.champion && (
-        <ChampionCard champion={view.knockout.champion} />
-      )}
+      {view.finished && view.champion && <ChampionCard champion={view.champion} />}
 
       {/* Progress: from registration to the champion */}
       <Card className="flex flex-col gap-5">

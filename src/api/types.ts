@@ -329,6 +329,12 @@ export interface CategoryView {
   knockout: KnockoutView | null;
   /** Final ranking (every player who played), once the knockout is over; null before. */
   ranking: RankingEntry[] | null;
+  /** A single group: no knockout, its table is the final result. */
+  singleGroup: boolean;
+  /** Winner of the competition (knockout final, or 1st of a single group). */
+  champion: Player | null;
+  /** Over: knockout decided (with 3rd place if played), or single group fully played. */
+  finished: boolean;
 }
 
 /** What the API returns for a tournament: every category's competition. */
@@ -367,6 +373,12 @@ export interface TournamentView {
   knockout: KnockoutView | null;
   /** Final ranking (every player who played), once the knockout is over; null before. */
   ranking: RankingEntry[] | null;
+  /** A single group: no knockout, its table is the final result. */
+  singleGroup: boolean;
+  /** Winner of the competition (knockout final, or 1st of a single group). */
+  champion: Player | null;
+  /** Over: knockout decided (with 3rd place if played), or single group fully played. */
+  finished: boolean;
 }
 
 /** A category found in an import file and where its players go. */

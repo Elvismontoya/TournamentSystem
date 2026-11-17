@@ -271,7 +271,7 @@ export function ParticipantsPage() {
       <p className="flex items-start gap-2 text-sm text-neutral-400">
         <Info className="mt-0.5 size-4 shrink-0 text-primary-300" aria-hidden="true" />
         Las cabezas de serie se asignan por ranking: los {SEEDS} mejores encabezan un grupo cada uno
-        y el resto se reparte al azar en el sorteo.
+        y el resto se reparte en serpiente por ranking en el sorteo.
       </p>
 
       {/* Mounted only while open, so each time starts with an empty form. */}

@@ -5,6 +5,7 @@ import type {
   BracketSlot,
   CategoryMap,
   CategoryView,
+  Division,
   DrawPreview,
   ImportPreview,
   KnockoutMatchView,
@@ -27,7 +28,7 @@ export interface Tournament {
    * Competitions (a category in a division) with registered players, each with how many: each
    * one plays apart. While nobody is registered, all of them.
    */
-  competitions: { name: string; registered: number }[];
+  competitions: { name: string; category: string; division: Division; registered: number }[];
   /** Shows another competition in every section. */
   selectCategory: (competition: string) => void;
   /** Message of the last action that failed (shown in a banner), or null. */
@@ -85,6 +86,9 @@ const EMPTY_CATEGORY: Omit<CategoryView, 'name' | 'category' | 'division'> = {
   groupStage: null,
   knockout: null,
   ranking: null,
+  singleGroup: false,
+  champion: null,
+  finished: false,
 };
 
 /** A player plays in a competition: same category, and same gender unless it is mixed. */
@@ -116,6 +120,9 @@ function viewOf(data: TournamentData, key: string): TournamentView {
     groupStage: competition.groupStage,
     knockout: competition.knockout,
     ranking: competition.ranking,
+    singleGroup: competition.singleGroup,
+    champion: competition.champion,
+    finished: competition.finished,
   };
 }
 /** Applies `change` to one category's competition (for instant local updates). */
@@ -218,9 +225,13 @@ const messageOf = (error: unknown) =>
  * another (in order); the screen takes the server's data once nothing is pending, so fast
  * typing in the score boxes never jumps back.
  */
-export function useTournament(tournamentId: string): TournamentState {
+export function useTournament(
+  tournamentId: string,
+  /** Competition to show first (e.g. the one a print page is for). */
+  initialCompetition: string | null = null,
+): TournamentState {
   const [data, setData] = useState<TournamentData | null>(null);
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(initialCompetition);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -299,7 +310,7 @@ export function useTournament(tournamentId: string): TournamentState {
   // registered). The chosen one, or the first offered (also when the chosen one empties).
   const withPlayers = data.categories.filter((competition) => competition.registered > 0);
   const offered = (withPlayers.length > 0 ? withPlayers : data.categories).map(
-    ({ name, registered }) => ({ name, registered }),
+    ({ name, category, division, registered }) => ({ name, category, division, registered }),
   );
   const keys = offered.map((competition) => competition.name);
   const category = chosen !== null && keys.includes(chosen) ? chosen : (keys.at(0) ?? '');

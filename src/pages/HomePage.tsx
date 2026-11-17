@@ -118,7 +118,7 @@ const FAQS = [
   },
   {
     q: '¿Cómo se arman los grupos?',
-    a: 'Los mejores del ranking encabezan un grupo cada uno y el resto se reparte al azar, separando a los jugadores de la misma delegación siempre que se pueda. Los grupos son de 3 a 6 jugadores.',
+    a: 'Los mejores del ranking encabezan un grupo cada uno y el resto se reparte en serpiente por ranking (ida y vuelta), separando a los jugadores de la misma delegación siempre que se pueda. Los grupos son de 3 a 6 jugadores.',
   },
   {
     q: '¿Cómo se calculan las tablas?',

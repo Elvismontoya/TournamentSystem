@@ -13,7 +13,6 @@ import {
   Network,
   Settings,
   Table2,
-  User,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -21,8 +20,9 @@ import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
+import { CompetitionPicker } from '../features/tournament/CompetitionPicker.tsx';
 import { STATUS_LABEL, tournamentStatus } from '../features/tournament/progress.ts';
-import { dateRangeText, modalitiesAndCategoriesText } from '../features/tournament/settingsText.ts';
+import { dateRangeText } from '../features/tournament/settingsText.ts';
 import { useTournament } from '../features/tournament/useTournament.ts';
 
 // The dashboard works for any sport. Everything comes from the API (TournamentSystem-backend);
@@ -86,7 +86,6 @@ export function TournamentLayout() {
   const status = tournamentStatus(tournament.view);
   const details: [LucideIcon, string | null][] = [
     [Table2, settings.sport],
-    [User, modalitiesAndCategoriesText(settings)],
     [ListOrdered, settings.format],
     [CalendarDays, dateRangeText(settings)],
     [MapPin, settings.location],
@@ -124,43 +123,7 @@ export function TournamentLayout() {
       </header>
 
       {/* Each category and division plays its own competition: every section shows the chosen one. */}
-      <div
-        role="tablist"
-        aria-label="Competencia"
-        className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5"
-      >
-        <span className="px-1 font-display text-xs font-semibold tracking-wider text-neutral-500 uppercase">
-          Competencia
-        </span>
-        {tournament.competitions.map(({ name: category, registered }) => {
-          const selected = category === tournament.view.category;
-          return (
-            <button
-              key={category}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => {
-                tournament.selectCategory(category);
-              }}
-              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 font-display text-sm font-medium transition-colors ${
-                selected
-                  ? 'bg-primary-600 text-white'
-                  : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'
-              }`}
-            >
-              {category}
-              <span
-                className={`rounded-full px-1.5 text-[11px] tabular-nums ${
-                  selected ? 'bg-white/20' : 'bg-neutral-800 text-neutral-400'
-                }`}
-              >
-                {registered}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <CompetitionPicker tournament={tournament} />
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-8 2xl:gap-12">
         <nav

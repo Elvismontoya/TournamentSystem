@@ -1,4 +1,4 @@
-import { CalendarDays, Info, LoaderCircle, Pencil, Shuffle, Trophy, Tv } from 'lucide-react';
+import { CalendarDays, Info, LoaderCircle, Pencil, Shuffle, Trophy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { ApiError } from '../../api/client.ts';
@@ -144,8 +144,9 @@ function DrawSetup({
             {seeded ? (
               <>
                 Los {current?.groupCount ?? '…'} primeros del ranking encabezan un grupo cada uno
-                (jugador 1 del grupo). El resto se reparte al azar, separando a los de la misma
-                delegación siempre que se pueda.
+                (jugador 1 del grupo). El resto se reparte en serpiente por ranking: la fila
+                siguiente va del último grupo al primero, la otra del primero al último, y así. Los
+                de la misma delegación cambian de grupo con otro de su misma fila cuando se puede.
               </>
             ) : (
               <>
@@ -578,7 +579,11 @@ export function GroupsPage() {
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Grupos"
-        text={`${describeSizes(groups.map((group) => group.players.length))} · ${settings.qualifiersPerGroup === 1 ? 'clasifica el 1.º' : 'clasifican los 2 primeros'} de cada grupo a la fase eliminatoria.`}
+        text={
+          groups.length === 1
+            ? `Grupo único de ${String(groups[0]?.players.length ?? 0)} · no hay llaves: la tabla del grupo es el resultado final.`
+            : `${describeSizes(groups.map((group) => group.players.length))} · ${settings.qualifiersPerGroup === 1 ? 'clasifica el 1.º' : 'clasifican los 2 primeros'} de cada grupo a la fase eliminatoria.`
+        }
       >
         <Button
           variant="outlined"
@@ -591,13 +596,9 @@ export function GroupsPage() {
           <Shuffle className="size-4" aria-hidden="true" />
           Volver a sortear
         </Button>
-        <Button variant="outlined">
-          <Tv className="size-4" aria-hidden="true" />
-          Modo pantalla
-        </Button>
         <ButtonLink to="../partidos" relative="path">
           <CalendarDays className="size-4" aria-hidden="true" />
-          Cargar resultados
+          Ir a partidos
         </ButtonLink>
       </SectionHeader>
 
