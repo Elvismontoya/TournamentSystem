@@ -9,6 +9,7 @@ import type {
   Player,
 } from '../../api/types.ts';
 import { roundName } from '../groupStage/display.ts';
+import { matchNumber } from '../print/printing.ts';
 
 /** What to show for a bracket position. */
 export interface SlotInfo {
@@ -116,23 +117,39 @@ function EntrantRow({
   );
 }
 
+/** Match ID on a match's corner: the number used to print its scoresheet. */
+function MatchIdTag({ id }: { id: number }) {
+  return (
+    <span
+      title={`ID del partido: ${String(id)}`}
+      className="absolute -top-2 -left-2 z-10 rounded-md border border-neutral-700 bg-neutral-950 px-1.5 font-display text-[10px] leading-4 font-bold text-neutral-300 tabular-nums"
+    >
+      #{id}
+    </span>
+  );
+}
+
 function MatchNode({ match, draw, describe }: { match: KnockoutMatchView } & BracketViewProps) {
   const firstRound = match.round === 0;
+  const id = matchNumber(draw, match.round, match.index);
   return (
-    <div className="w-44 divide-y divide-neutral-800 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 2xl:w-52">
-      {([0, 1] as const).map((side) => {
-        const position = match.index * 2 + side + 1;
-        const slot = draw.slots.at(position - 1);
-        return (
-          <EntrantRow
-            key={side}
-            match={match}
-            side={side}
-            info={firstRound && slot ? describe(slot) : null}
-            position={firstRound ? position : null}
-          />
-        );
-      })}
+    <div className="relative">
+      <MatchIdTag id={id} />
+      <div className="w-44 divide-y divide-neutral-800 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 2xl:w-52">
+        {([0, 1] as const).map((side) => {
+          const position = match.index * 2 + side + 1;
+          const slot = draw.slots.at(position - 1);
+          return (
+            <EntrantRow
+              key={side}
+              match={match}
+              side={side}
+              info={firstRound && slot ? describe(slot) : null}
+              position={firstRound ? position : null}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -346,9 +363,12 @@ function CompactRow({ position, size, info }: { position: number; size: number; 
 export function CompactLayout({
   size,
   renderRow,
+  matchId,
 }: {
   size: number;
   renderRow: (position: number) => React.ReactNode;
+  /** Match ID of each first-round pair (by match index), shown on its corner. */
+  matchId?: (matchIndex: number) => number;
 }) {
   const half = size / 2;
 
@@ -364,7 +384,8 @@ export function CompactLayout({
             <ol className="flex flex-col gap-1.5">
               {firstRoundPairs(from, half).map(([a, b]) => (
                 <li key={a} className={`flex ${isTop ? '' : 'flex-row-reverse'}`}>
-                  <div className="min-w-0 flex-1 divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-900">
+                  <div className="relative min-w-0 flex-1 divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-900">
+                    {matchId && <MatchIdTag id={matchId((a - 1) / 2)} />}
                     {renderRow(a)}
                     {renderRow(b)}
                   </div>
@@ -390,6 +411,7 @@ function CompactList({ draw, describe }: BracketViewProps) {
   return (
     <CompactLayout
       size={size}
+      matchId={(matchIndex) => matchNumber(draw, 0, matchIndex)}
       renderRow={(position) => (
         <CompactRow
           key={position}

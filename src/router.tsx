@@ -4,6 +4,10 @@ import { TournamentLayout } from './layouts/TournamentLayout.tsx';
 import { TournamentsPage } from './pages/admin/TournamentsPage.tsx';
 import { HomePage } from './pages/HomePage.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
+import { BracketHalfPage } from './pages/print/BracketHalfPage.tsx';
+import { GroupSheetPage } from './pages/print/GroupSheetPage.tsx';
+import { MatchSheetPage } from './pages/print/MatchSheetPage.tsx';
+import { PrintLayout } from './pages/print/PrintLayout.tsx';
 import { BracketsPage } from './pages/tournament/BracketsPage.tsx';
 import { GroupsPage } from './pages/tournament/GroupsPage.tsx';
 import { MatchesPage } from './pages/tournament/MatchesPage.tsx';
@@ -34,6 +38,16 @@ export const router = createBrowserRouter([
         ],
       },
       { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+  {
+    // Print pages (planillas and bracket), opened in a new tab: no app layout around them.
+    path: '/torneos/:slug/imprimir',
+    element: <PrintLayout />,
+    children: [
+      { path: 'grupo/:groupIndex', element: <GroupSheetPage /> },
+      { path: 'partido/:round/:matchIndex', element: <MatchSheetPage /> },
+      { path: 'llaves/:half', element: <BracketHalfPage /> },
     ],
   },
 ]);

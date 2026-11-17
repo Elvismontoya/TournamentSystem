@@ -1,4 +1,4 @@
-import { Info, Lock, Network, Pencil, Shuffle, Trophy, TriangleAlert } from 'lucide-react';
+import { Info, Lock, Network, Pencil, Printer, Shuffle, Trophy, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import type { BracketSlot, KnockoutView, Player, Settings } from '../../api/types.ts';
@@ -16,6 +16,9 @@ import {
   type BibResolution,
 } from '../../features/knockout/ManualBracketEditor.tsx';
 import { ScoreCard } from '../../features/matches/ScoreCard.tsx';
+import { PrintLink } from '../../features/print/PrintLink.tsx';
+import { PrintMatchModal } from '../../features/print/PrintMatchModal.tsx';
+import { matchNumber } from '../../features/print/printing.ts';
 import {
   bestOfLabel,
   knockoutWalkoverText,
@@ -29,12 +32,15 @@ const LOCKED_MATCH =
 function KnockoutMatches({
   knockout,
   settings,
+  competition,
   onSet,
   onScore,
   onWalkover,
 }: {
   knockout: KnockoutView;
   settings: Settings;
+  /** Competition key, for the print links. */
+  competition: string;
   onSet: Tournament['updateKnockoutSet'];
   onScore: Tournament['updateKnockoutScore'];
   onWalkover: Tournament['setKnockoutWalkover'];
@@ -100,13 +106,28 @@ function KnockoutMatches({
                   match === thirdPlace
                     ? match.roundName
                     : `${match.roundName} · ${String(match.index + 1)}`;
+                const id = matchNumber(knockout, match.round, match.index);
                 return (
                   <ScoreCard
                     key={`${String(match.round)}-${String(match.index)}`}
                     header={
-                      <span className="rounded-md bg-primary-500/15 px-2 py-0.5 font-display text-sm font-bold text-primary-300">
-                        {label}
-                      </span>
+                      <>
+                        <span
+                          title={`ID del partido: ${String(id)}`}
+                          className="rounded-md bg-neutral-800 px-2 py-0.5 font-display text-sm font-bold text-white tabular-nums"
+                        >
+                          #{id}
+                        </span>
+                        <span className="rounded-md bg-primary-500/15 px-2 py-0.5 font-display text-sm font-bold text-primary-300">
+                          {label}
+                        </span>
+                        <PrintLink
+                          compact
+                          competition={competition}
+                          path={`partido/${String(match.round)}/${String(match.index)}`}
+                          label={`Imprimir planilla del partido #${String(id)}`}
+                        />
+                      </>
                     }
                     caption={
                       match === thirdPlace
@@ -216,6 +237,7 @@ export function BracketsPage() {
   const { players, knockout, settings } = view;
   const groups = view.groupStage?.groups;
   const [editing, setEditing] = useState(false);
+  const [printingMatch, setPrintingMatch] = useState(false);
 
   // Manual bracket: start from a seeded draw and adjust positions by hand.
   const buildManually = () => {
@@ -238,6 +260,24 @@ export function BracketsPage() {
         >
           <ButtonLink to="../grupos" relative="path" variant="soft">
             Ir a grupos
+          </ButtonLink>
+        </EmptyState>
+      </div>
+    );
+  }
+
+  // A single group has no knockout: its table is the final result.
+  if (view.singleGroup) {
+    return (
+      <div className="flex flex-col gap-6">
+        <SectionHeader title="Llaves" text="Cuadro principal de eliminación directa." />
+        <EmptyState
+          icon={Network}
+          title="Grupo único: no hay llaves"
+          text="Con un solo grupo, la tabla del grupo es el resultado final de esta competencia. Al jugar todos sus partidos queda la clasificación."
+        >
+          <ButtonLink to="../clasificacion" relative="path" variant="soft">
+            Ver clasificación
           </ButtonLink>
         </EmptyState>
       </div>
@@ -301,6 +341,20 @@ export function BracketsPage() {
         title="Llaves"
         text={`Cuadro de ${String(size)} · ${roundName(size).toLowerCase()} · ${String(decided)} de ${String(total)} clasificados definidos.`}
       >
+        {knockout && (
+          <>
+            <PrintLink competition={view.category} path="llaves/completa" label="Imprimir llaves" />
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setPrintingMatch(true);
+              }}
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Imprimir partido
+            </Button>
+          </>
+        )}
         {knockout?.hasResults && (
           <span className="flex items-center gap-1.5 text-sm text-neutral-400">
             <Lock className="size-4" aria-hidden="true" />
@@ -393,10 +447,20 @@ export function BracketsPage() {
           <KnockoutMatches
             knockout={knockout}
             settings={settings}
+            competition={view.category}
             onSet={updateKnockoutSet}
             onScore={updateKnockoutScore}
             onWalkover={setKnockoutWalkover}
           />
+          {printingMatch && (
+            <PrintMatchModal
+              competition={view.category}
+              knockout={knockout}
+              onClose={() => {
+                setPrintingMatch(false);
+              }}
+            />
+          )}
         </>
       ) : (
         <Card className="flex flex-col gap-4">

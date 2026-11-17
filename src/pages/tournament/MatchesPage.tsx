@@ -1,4 +1,6 @@
-import { Info, Shuffle } from 'lucide-react';
+import { Info, Printer, Shuffle } from 'lucide-react';
+import { Button } from '../../components/ui/Button.tsx';
+import { PrintGroupsModal } from '../../features/print/PrintGroupsModal.tsx';
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { ButtonLink } from '../../components/ui/ButtonLink.tsx';
@@ -84,6 +86,7 @@ export function MatchesPage() {
   const { view, updateSet, updateScore, setWalkover } = useOutletContext<Tournament>();
   const [filter, setFilter] = useState<GroupFilter>('all');
   const [query, setQuery] = useState('');
+  const [printing, setPrinting] = useState(false);
   const groups = view.groupStage?.groups;
   const locked = view.knockout?.hasResults ?? false;
 
@@ -133,6 +136,15 @@ export function MatchesPage() {
         <ButtonLink to="../grupos" relative="path" variant="outlined">
           Ver tablas de grupos
         </ButtonLink>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            setPrinting(true);
+          }}
+        >
+          <Printer className="size-4" aria-hidden="true" />
+          Imprimir planilla
+        </Button>
         <ButtonLink to="../llaves" relative="path" variant="outlined">
           Partidos de llaves
         </ButtonLink>
@@ -199,6 +211,15 @@ export function MatchesPage() {
         quien llega a {view.settings.setsToWin} {view.settings.setsToWin === 1 ? 'set' : 'sets'}. Un
         set inválido se marca en rojo.
       </p>
+      {printing && (
+        <PrintGroupsModal
+          competition={view.category}
+          groups={groups}
+          onClose={() => {
+            setPrinting(false);
+          }}
+        />
+      )}
     </div>
   );
 }

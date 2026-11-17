@@ -101,4 +101,31 @@
   h3 {
     @apply font-display text-neutral-50;
   }
+
+  /* Print pages (planillas, llaves): black on white, on screen and on paper. */
+  .print-page {
+    color-scheme: light;
+  }
+  .print-page h1,
+  .print-page h2,
+  .print-page h3 {
+    color: black;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  body {
+    background: white;
+  }
+  .no-print {
+    display: none !important;
+  }
+  /* Each sheet starts on a new page. */
+  .sheet + .sheet {
+    break-before: page;
+  }
 }
