@@ -25,11 +25,14 @@ type FormField = 'name' | 'delegation' | 'ranking' | 'gender' | 'category';
 type FormValues = Record<FormField, string>;
 type FormErrors = Partial<Record<FormField, string>>;
 
+const DELEGATION_REQUIRED = 'Escribe la liga, delegación o club (o «Independiente»).';
+
 /** What's wrong with each field (empty when everything is valid). */
 function validate(form: FormValues): FormErrors {
   const errors: FormErrors = {};
   if (form.name.trim() === '') errors.name = 'Escribe el nombre del jugador.';
   else if (form.name.trim().length < 3) errors.name = 'El nombre es muy corto.';
+  if (form.delegation.trim() === '') errors.delegation = DELEGATION_REQUIRED;
   if (!GENDERS.some((option) => option.label === form.gender)) errors.gender = 'Elige el género.';
   if (form.category === '') errors.category = 'Elige la categoría.';
   if (form.ranking.trim() !== '') {
@@ -151,14 +154,22 @@ export function AddParticipantModal({
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="participant-delegation" label="Liga, delegación o club">
+          <Field
+            id="participant-delegation"
+            label="Liga, delegación o club"
+            required
+            hint="Si no tiene, escribe «Independiente»."
+            error={errors.delegation}
+          >
             <Input
               id="participant-delegation"
               name="delegation"
               type="text"
               placeholder="Club Universitario"
+              aria-describedby="participant-delegation-hint"
               value={form.delegation}
               onChange={set('delegation')}
+              {...invalid('delegation', 'participant-delegation')}
             />
           </Field>
           <Field id="participant-gender" label="Género" required error={errors.gender}>

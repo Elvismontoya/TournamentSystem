@@ -28,6 +28,9 @@ function validate(form: FormValues, player: Player, players: Player[]): FormErro
   const errors: FormErrors = {};
   if (form.name.trim() === '') errors.name = 'Escribe el nombre del jugador.';
   else if (form.name.trim().length < 3) errors.name = 'El nombre es muy corto.';
+  if (form.delegation.trim() === '') {
+    errors.delegation = 'Escribe la liga, delegación o club (o «Independiente»).';
+  }
 
   const bib = Number(form.bib);
   if (form.bib.trim() === '') errors.bib = 'Escribe el número del jugador.';
@@ -152,12 +155,20 @@ export function EditParticipantModal({
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="edit-participant-delegation" label="Liga, delegación o club">
+          <Field
+            id="edit-participant-delegation"
+            label="Liga, delegación o club"
+            required
+            hint="Si no tiene, escribe «Independiente»."
+            error={errors.delegation}
+          >
             <Input
               id="edit-participant-delegation"
               type="text"
+              aria-describedby="edit-participant-delegation-hint"
               value={form.delegation}
               onChange={set('delegation')}
+              {...invalid('delegation', 'edit-participant-delegation')}
             />
           </Field>
           <Field id="edit-participant-bib" label="Número (Nr.)" required error={errors.bib}>
