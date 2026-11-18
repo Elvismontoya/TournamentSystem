@@ -331,7 +331,10 @@ const SCORING_OPTIONS: { value: Scoring; title: string; text: string }[] = [
   },
 ];
 
-/** Match rules: how results are entered, best of N sets, points per set and margin. */
+/**
+ * Match rules: how results are entered and best of N sets. Points per set (11) and the
+ * margin (2) are shown but fixed: they come from the tournament (11 and 2 when created).
+ */
 export function MatchRulesFields({ idPrefix, values, set, limits }: SectionProps) {
   const id = (name: string) => `${idPrefix}-${name}`;
   const locked = limits.rulesLocked;
@@ -340,8 +343,8 @@ export function MatchRulesFields({ idPrefix, values, set, limits }: SectionProps
       {locked && (
         <p className="flex items-start gap-2 rounded-lg border border-tertiary-500/40 bg-tertiary-500/10 px-3 py-2 text-sm text-tertiary-200">
           <Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          Ya hay resultados cargados: la forma de cargar resultados, los sets de la fase de grupos,
-          los puntos por set y la diferencia mínima no se pueden cambiar.
+          Ya hay resultados cargados: la forma de cargar resultados y los sets de la fase de grupos
+          no se pueden cambiar.
         </p>
       )}
       <fieldset>
@@ -405,34 +408,6 @@ export function MatchRulesFields({ idPrefix, values, set, limits }: SectionProps
             }}
           />
         </Field>
-        {values.scoring === 'points' && (
-          <>
-            <Field id={id('game-points')} label="Puntos por set" required>
-              <Input
-                id={id('game-points')}
-                type="number"
-                min={1}
-                disabled={locked}
-                {...textProps(values, set, 'gamePoints')}
-              />
-            </Field>
-            <Field
-              id={id('margin')}
-              label="Diferencia mínima para ganar"
-              required
-              hint="Con 2: si empatan cerca del final, se sigue hasta sacar 2 de ventaja."
-            >
-              <Input
-                id={id('margin')}
-                type="number"
-                min={1}
-                disabled={locked}
-                aria-describedby={`${id('margin')}-hint`}
-                {...textProps(values, set, 'winMargin')}
-              />
-            </Field>
-          </>
-        )}
       </div>
     </div>
   );
