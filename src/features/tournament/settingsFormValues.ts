@@ -56,6 +56,13 @@ export const NEW_TOURNAMENT_LIMITS: FormLimits = {
 
 const firstAvailable = (items: CatalogItem[]) => items.find((item) => item.available)?.name ?? '';
 
+/** Today's date in the device's time zone, as a date input wants it ("2026-11-17"). */
+function todayIso(): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 /** Starting values of the creation wizard (ITTF-style defaults). */
 export function newTournamentValues(): SettingsFormValues {
   return {
@@ -65,7 +72,8 @@ export function newTournamentValues(): SettingsFormValues {
     modalities: [firstAvailable(MODALITIES)],
     categories: [],
     divisions: ['Masculino', 'Femenino'],
-    startDate: '',
+    // Starts today by default (it can be changed).
+    startDate: todayIso(),
     endDate: '',
     location: '',
     defaultGroupSize: '4',
